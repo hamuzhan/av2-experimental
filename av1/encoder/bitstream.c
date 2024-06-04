@@ -41,6 +41,7 @@
 #include "av1/common/entropymv.h"
 #include "av1/common/mvref_common.h"
 #include "av1/common/pred_common.h"
+#include "av1/common/quant_common.h"
 #include "av1/common/reconinter.h"
 #include "av1/common/reconintra.h"
 #include "av1/common/seg_common.h"
@@ -5420,7 +5421,20 @@ static AOM_INLINE void write_sequence_header_beyond_av1(
 
   aom_wb_write_literal(wb, seq_params->enable_cfl_ds_filter, 2);
 
+#if CONFIG_DQ && TCQ_HDR_FLAG
+  int enable_tcq = seq_params->enable_tcq;
+  aom_wb_write_bit(wb, enable_tcq != 0);
+  if (enable_tcq) {
+    aom_wb_write_literal(wb, enable_tcq - 1, 2);
+  }
+  if (enable_tcq == TCQ_DISABLE || enable_tcq >= TCQ_4ST_FR) {
+    // Signal whether parity hiding is used if TCQ is
+    // disabled, or enabled/disabled at frame level.
+    aom_wb_write_bit(wb, seq_params->enable_parity_hiding);
+  }
+#else
   aom_wb_write_bit(wb, seq_params->enable_parity_hiding);
+#endif
 #if CONFIG_EXT_RECUR_PARTITIONS
   aom_wb_write_bit(wb, seq_params->enable_ext_partitions);
 #endif  // CONFIG_EXT_RECUR_PARTITIONS
@@ -6083,6 +6097,17 @@ static AOM_INLINE void write_uncompressed_header_obu(
   }
 
   write_tile_info(cm, saved_wb, wb);
+
+#if CONFIG_DQ && TCQ_HDR_FLAG
+  // Encode adaptive frame-level TCQ flag, if applicable.
+  // Basic frame-level strategy: enable for keyframes only.
+  // This can be extended in other ways (e.g., include alt-ref).
+  int enable_tcq = seq_params->enable_tcq;
+  if (enable_tcq >= TCQ_4ST_FR) {
+    aom_wb_write_bit(wb, features->tcq_mode != 0);
+  }
+#endif
+
   encode_quantization(quant_params, av1_num_planes(cm),
                       cm->seq_params.bit_depth,
                       cm->seq_params.separate_uv_delta_q, wb);
@@ -6120,7 +6145,11 @@ static AOM_INLINE void write_uncompressed_header_obu(
     }
   }
 
-  if (features->coded_lossless || !cm->seq_params.enable_parity_hiding) {
+  if (features->coded_lossless || !cm->seq_params.enable_parity_hiding
+#if CONFIG_DQ
+      || features->tcq_mode
+#endif
+  ) {
     assert(features->allow_parity_hiding == false);
   } else {
     aom_wb_write_bit(wb, features->allow_parity_hiding);

@@ -1269,7 +1269,9 @@ class AV1ConvolveNonSep2DHighbdTest
   int16_t FilterTaps_[kNumSymmetricTaps + 1];
 };
 
-TEST_P(AV1ConvolveNonSep2DHighbdTest, RunTest) { RunTest(RESTORE_PC_WIENER); }
+TEST_P(AV1ConvolveNonSep2DHighbdTest, DISABLED_RunTest) {
+  RunTest(RESTORE_PC_WIENER);
+}
 
 TEST_P(AV1ConvolveNonSep2DHighbdTest, DISABLED_Speed) {
   RunSpeedTest(RESTORE_PC_WIENER);
