@@ -1232,10 +1232,19 @@ void av1_write_coeffs_txb(const AV1_COMMON *const cm, MACROBLOCK *const x,
     if (plane > 0) {
       if (limits) {
         if (level > LF_NUM_BASE_LEVELS) {
-          const int base_range =
-              level - 1 - LF_NUM_BASE_LEVELS;  // level is above 1.
           const int br_ctx = get_br_lf_ctx_chroma(levels, pos, bwl, tx_class);
           aom_cdf_prob *cdf = ec_ctx->coeff_br_lf_uv_cdf[br_ctx];
+#if NEWHR
+          int br = get_low_range(level, 1);
+          for (int idx = 0; idx < COEFF_BASE_RANGE; idx += BR_CDF_SIZE - 1) {
+            const int k = AOMMIN(br, BR_CDF_SIZE - 1);
+            br -= k;
+            aom_write_symbol(w, k, cdf, BR_CDF_SIZE);
+            if (k < BR_CDF_SIZE - 1) break;
+          }
+#else
+          const int base_range =
+              level - 1 - LF_NUM_BASE_LEVELS;  // level is above 1.
           for (int idx = 0; idx < COEFF_BASE_RANGE; idx += BR_CDF_SIZE - 1) {
             const int k = AOMMIN(base_range - idx, BR_CDF_SIZE - 1);
             aom_write_symbol_dbg(w, k, cdf, BR_CDF_SIZE);
@@ -1245,12 +1254,22 @@ void av1_write_coeffs_txb(const AV1_COMMON *const cm, MACROBLOCK *const x,
             }
             if (k < BR_CDF_SIZE - 1) break;
           }
+#endif
         }
       } else {
         if (level > NUM_BASE_LEVELS) {
-          const int base_range = level - 1 - NUM_BASE_LEVELS;
           const int br_ctx = get_br_ctx_chroma(levels, pos, bwl, tx_class);
           aom_cdf_prob *cdf = ec_ctx->coeff_br_uv_cdf[br_ctx];
+#if NEWHR
+          int br = get_low_range(level, 0);
+          for (int idx = 0; idx < COEFF_BASE_RANGE; idx += BR_CDF_SIZE - 1) {
+            const int k = AOMMIN(br, BR_CDF_SIZE - 1);
+            br -= k;
+            aom_write_symbol(w, k, cdf, BR_CDF_SIZE);
+            if (k < BR_CDF_SIZE - 1) break;
+          }
+#else
+          const int base_range = level - 1 - NUM_BASE_LEVELS;
           for (int idx = 0; idx < COEFF_BASE_RANGE; idx += BR_CDF_SIZE - 1) {
             const int k = AOMMIN(base_range - idx, BR_CDF_SIZE - 1);
             aom_write_symbol_dbg(w, k, cdf, BR_CDF_SIZE);
@@ -1260,15 +1279,25 @@ void av1_write_coeffs_txb(const AV1_COMMON *const cm, MACROBLOCK *const x,
             }
             if (k < BR_CDF_SIZE - 1) break;
           }
+#endif
         }
       }
     } else {
       if (limits) {
         if (level > LF_NUM_BASE_LEVELS) {
-          const int base_range =
-              level - 1 - LF_NUM_BASE_LEVELS;  // level is above 1.
           const int br_ctx = get_br_lf_ctx(levels, pos, bwl, tx_class);
           aom_cdf_prob *cdf = ec_ctx->coeff_br_lf_cdf[br_ctx];
+#if NEWHR
+          int br = get_low_range(level, 1);
+          for (int idx = 0; idx < COEFF_BASE_RANGE; idx += BR_CDF_SIZE - 1) {
+            const int k = AOMMIN(br, BR_CDF_SIZE - 1);
+            br -= k;
+            aom_write_symbol(w, k, cdf, BR_CDF_SIZE);
+            if (k < BR_CDF_SIZE - 1) break;
+          }
+#else
+          const int base_range =
+              level - 1 - LF_NUM_BASE_LEVELS;  // level is above 1.
           for (int idx = 0; idx < COEFF_BASE_RANGE; idx += BR_CDF_SIZE - 1) {
             const int k = AOMMIN(base_range - idx, BR_CDF_SIZE - 1);
             aom_write_symbol_dbg(w, k, cdf, BR_CDF_SIZE);
@@ -1278,12 +1307,22 @@ void av1_write_coeffs_txb(const AV1_COMMON *const cm, MACROBLOCK *const x,
             }
             if (k < BR_CDF_SIZE - 1) break;
           }
+#endif
         }
       } else {
         if (level > NUM_BASE_LEVELS) {
-          const int base_range = level - 1 - NUM_BASE_LEVELS;
           const int br_ctx = get_br_ctx(levels, pos, bwl, tx_class);
           aom_cdf_prob *cdf = ec_ctx->coeff_br_cdf[br_ctx];
+#if NEWHR
+          int br = get_low_range(level, 0);
+          for (int idx = 0; idx < COEFF_BASE_RANGE; idx += BR_CDF_SIZE - 1) {
+            const int k = AOMMIN(br, BR_CDF_SIZE - 1);
+            br -= k;
+            aom_write_symbol(w, k, cdf, BR_CDF_SIZE);
+            if (k < BR_CDF_SIZE - 1) break;
+          }
+#else
+          const int base_range = level - 1 - NUM_BASE_LEVELS;
           for (int idx = 0; idx < COEFF_BASE_RANGE; idx += BR_CDF_SIZE - 1) {
             const int k = AOMMIN(base_range - idx, BR_CDF_SIZE - 1);
             aom_write_symbol_dbg(w, k, cdf, BR_CDF_SIZE);
@@ -1293,6 +1332,7 @@ void av1_write_coeffs_txb(const AV1_COMMON *const cm, MACROBLOCK *const x,
             }
             if (k < BR_CDF_SIZE - 1) break;
           }
+#endif
         }
       }
     }
@@ -1617,10 +1657,19 @@ void av1_write_coeffs_txb(const AV1_COMMON *const cm, MACROBLOCK *const x,
     if (plane > 0) {
       if (limits) {
         if (level > LF_NUM_BASE_LEVELS) {
-          const int base_range =
-              level - 1 - LF_NUM_BASE_LEVELS;  // level is above 1.
           const int br_ctx = get_br_lf_ctx_chroma(levels, pos, bwl, tx_class);
           aom_cdf_prob *cdf = ec_ctx->coeff_br_lf_uv_cdf[br_ctx];
+#if NEWHR
+          int br = get_low_range(level, 1);
+          for (int idx = 0; idx < COEFF_BASE_RANGE; idx += BR_CDF_SIZE - 1) {
+            const int k = AOMMIN(br, BR_CDF_SIZE - 1);
+            br -= k;
+            aom_write_symbol(w, k, cdf, BR_CDF_SIZE);
+            if (k < BR_CDF_SIZE - 1) break;
+          }
+#else
+          const int base_range =
+              level - 1 - LF_NUM_BASE_LEVELS;  // level is above 1.
           for (int idx = 0; idx < COEFF_BASE_RANGE; idx += BR_CDF_SIZE - 1) {
             const int k = AOMMIN(base_range - idx, BR_CDF_SIZE - 1);
             aom_write_symbol_dbg(w, k, cdf, BR_CDF_SIZE);
@@ -1630,12 +1679,22 @@ void av1_write_coeffs_txb(const AV1_COMMON *const cm, MACROBLOCK *const x,
             }
             if (k < BR_CDF_SIZE - 1) break;
           }
+#endif
         }
       } else {
         if (level > NUM_BASE_LEVELS) {
-          const int base_range = level - 1 - NUM_BASE_LEVELS;
           const int br_ctx = get_br_ctx_chroma(levels, pos, bwl, tx_class);
           aom_cdf_prob *cdf = ec_ctx->coeff_br_uv_cdf[br_ctx];
+#if NEWHR
+          int br = get_low_range(level, 0);
+          for (int idx = 0; idx < COEFF_BASE_RANGE; idx += BR_CDF_SIZE - 1) {
+            const int k = AOMMIN(br, BR_CDF_SIZE - 1);
+            br -= k;
+            aom_write_symbol(w, k, cdf, BR_CDF_SIZE);
+            if (k < BR_CDF_SIZE - 1) break;
+          }
+#else
+          const int base_range = level - 1 - NUM_BASE_LEVELS;
           for (int idx = 0; idx < COEFF_BASE_RANGE; idx += BR_CDF_SIZE - 1) {
             const int k = AOMMIN(base_range - idx, BR_CDF_SIZE - 1);
             aom_write_symbol_dbg(w, k, cdf, BR_CDF_SIZE);
@@ -1645,15 +1704,25 @@ void av1_write_coeffs_txb(const AV1_COMMON *const cm, MACROBLOCK *const x,
             }
             if (k < BR_CDF_SIZE - 1) break;
           }
+#endif
         }
       }
     } else {
       if (limits) {
         if (level > LF_NUM_BASE_LEVELS) {
-          const int base_range =
-              level - 1 - LF_NUM_BASE_LEVELS;  // level is above 1.
           const int br_ctx = get_br_lf_ctx(levels, pos, bwl, tx_class);
           aom_cdf_prob *cdf = ec_ctx->coeff_br_lf_cdf[br_ctx];
+#if NEWHR
+          int br = get_low_range(level, 1);
+          for (int idx = 0; idx < COEFF_BASE_RANGE; idx += BR_CDF_SIZE - 1) {
+            const int k = AOMMIN(br, BR_CDF_SIZE - 1);
+            br -= k;
+            aom_write_symbol(w, k, cdf, BR_CDF_SIZE);
+            if (k < BR_CDF_SIZE - 1) break;
+          }
+#else
+          const int base_range =
+              level - 1 - LF_NUM_BASE_LEVELS;  // level is above 1.
           for (int idx = 0; idx < COEFF_BASE_RANGE; idx += BR_CDF_SIZE - 1) {
             const int k = AOMMIN(base_range - idx, BR_CDF_SIZE - 1);
             aom_write_symbol_dbg(w, k, cdf, BR_CDF_SIZE);
@@ -1663,12 +1732,22 @@ void av1_write_coeffs_txb(const AV1_COMMON *const cm, MACROBLOCK *const x,
             }
             if (k < BR_CDF_SIZE - 1) break;
           }
+#endif
         }
       } else {
         if (level > NUM_BASE_LEVELS) {
-          const int base_range = level - 1 - NUM_BASE_LEVELS;
           const int br_ctx = get_br_ctx(levels, pos, bwl, tx_class);
           aom_cdf_prob *cdf = ec_ctx->coeff_br_cdf[br_ctx];
+#if NEWHR
+          int br = get_low_range(level, 0);
+          for (int idx = 0; idx < COEFF_BASE_RANGE; idx += BR_CDF_SIZE - 1) {
+            const int k = AOMMIN(br, BR_CDF_SIZE - 1);
+            br -= k;
+            aom_write_symbol(w, k, cdf, BR_CDF_SIZE);
+            if (k < BR_CDF_SIZE - 1) break;
+          }
+#else
+          const int base_range = level - 1 - NUM_BASE_LEVELS;
           for (int idx = 0; idx < COEFF_BASE_RANGE; idx += BR_CDF_SIZE - 1) {
             const int k = AOMMIN(base_range - idx, BR_CDF_SIZE - 1);
             aom_write_symbol_dbg(w, k, cdf, BR_CDF_SIZE);
@@ -1678,6 +1757,7 @@ void av1_write_coeffs_txb(const AV1_COMMON *const cm, MACROBLOCK *const x,
             }
             if (k < BR_CDF_SIZE - 1) break;
           }
+#endif
         }
       }
     }

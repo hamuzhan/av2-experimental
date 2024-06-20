@@ -27,7 +27,7 @@ extern "C" {
 #define DQENABLE                       0       //Determine whether to use DQ by dq_enable()
 #define NEWQINDEX                      1       //QP shift
 #if CONFIG_LCCHROMA
-#define NEWHR                          0       //1:parity is determined by (base + LR) levels and not changed by HR
+#define NEWHR                          1       //1:parity is determined by (base + LR) levels and not changed by HR
 #else
 #define NEWHR                          1       //1:parity is determined by (base + LR) levels and not changed by HR
 #endif
