@@ -3759,11 +3759,25 @@ static INLINE int block_signals_sec_tx_type(const MACROBLOCKD *xd,
   const TX_TYPE primary_tx_type = get_primary_tx_type(tx_type);
   const int width = tx_size_wide[tx_size];
   const int height = tx_size_high[tx_size];
+#if CONFIG_IST_REDUCE_METHOD4
+  const int st_size_class = (width == 8 && height == 8) ? 1 : (width >= 8 && height >= 8) ? 2 : 0;
+#else
   const int sb_size = (width >= 8 && height >= 8) ? 8 : 4;
+#endif
   bool ist_eob = 1;
   // Updated EOB condition
+#if CONFIG_IST_REDUCE_METHOD4
+  if (((st_size_class == 0) && (eob > IST_4x4_HEIGHT)) ||
+      ((st_size_class == 1) && (eob > IST_8x8_HEIGHT_RED)) ||
+      ((st_size_class == 2) && (eob > IST_8x8_HEIGHT))) {
+#else
   if (((sb_size == 4) && (eob > IST_4x4_HEIGHT)) ||
+#if CONFIG_IST_REDUCE_METHOD3
+      ((sb_size == 8) && (eob > IST_8x8_HEIGHT_RED))) {
+#else
       ((sb_size == 8) && (eob > IST_8x8_HEIGHT))) {
+#endif
+#endif
     ist_eob = 0;
   }
   const int is_depth0 = tx_size_is_depth0(tx_size, bs);
@@ -3774,7 +3788,11 @@ static INLINE int block_signals_sec_tx_type(const MACROBLOCKD *xd,
            : (intra_dir < PAETH_PRED &&
               !(mbmi->filter_intra_mode_info.use_filter_intra)));
   const int code_stx =
+#if CONFIG_IST_REDUCE_METHOD2
+      (primary_tx_type == DCT_DCT) &&
+#else
       (primary_tx_type == DCT_DCT || primary_tx_type == ADST_ADST) &&
+#endif
       mode_dependent_condition && is_depth0 && ist_eob;
   return code_stx;
 }

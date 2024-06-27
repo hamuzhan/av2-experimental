@@ -2801,7 +2801,11 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
     const int filter = mbmi->filter_intra_mode_info.use_filter_intra;
     const int is_depth0 = tx_size_is_depth0(tx_size, plane_bsize);
     bool skip_stx =
+#if CONFIG_IST_REDUCE_METHOD2
+        ((primary_tx_type != DCT_DCT) ||
+#else
         ((primary_tx_type != DCT_DCT && primary_tx_type != ADST_ADST) ||
+#endif
          plane != 0 ||
          (is_inter_block(mbmi, xd->tree_type)
               ? (primary_tx_type == ADST_ADST || txw < 16 || txh < 16)
@@ -2840,9 +2844,13 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
         const PREDICTION_MODE mode = AOMMIN(intra_mode, SMOOTH_H_PRED);
         uint16_t stx_set = 0;
         if (!skip_stx) {
+#if CONFIG_IST_REDUCE_METHOD1
+          stx_set = stx_transpose_mapping[mode];
+#else
           stx_set = (txfm_param.tx_type == ADST_ADST)
                         ? stx_transpose_mapping[mode] + IST_DIR_SIZE
                         : stx_transpose_mapping[mode];
+#endif
         }
         assert(stx_set < IST_SET_SIZE);
         set_secondary_tx_set(&tx_type, stx_set);
@@ -2851,8 +2859,12 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
         txfm_param.sec_tx_set = stx_set;
 #endif  // !CONFIG_IST_ANY_SET && CONFIG_IST_SET_FLAG
 #if CONFIG_IST_ANY_SET
+#if CONFIG_IST_REDUCE_METHOD1
+        stx_set = set_id;
+#else
         stx_set = (primary_tx_type == ADST_ADST && stx) ? set_id + IST_DIR_SIZE
                                                         : set_id;
+#endif
         set_secondary_tx_set(&tx_type, stx_set);
         txfm_param.sec_tx_set = stx_set;
         assert(stx_set < IST_SET_SIZE);

@@ -6757,20 +6757,45 @@ void av1_highbd_inv_txfm_add_sse4_1(const tran_low_t *input, uint16_t *dest,
 void inv_stxfm_sse4_1(tran_low_t *src, tran_low_t *dst,
                       const PREDICTION_MODE mode, const uint8_t stx_idx,
                       const int size) {
+#if CONFIG_IST_REDUCE_METHOD4
+  const int16_t *kernel = (size == 0) ? ist_4x4_kernel[mode][stx_idx][0]
+                                      : ist_8x8_kernel[mode][stx_idx][0];
+  const int dimension = (size == 0) ? 16 : 64;
+#else
   const int16_t *kernel = (size == 4) ? ist_4x4_kernel[mode][stx_idx][0]
                                       : ist_8x8_kernel[mode][stx_idx][0];
+#endif
   assert(stx_idx < 4);
   const int rnd_factor = 1 << (7 - 1);
   const __m128i round = _mm_set1_epi32(rnd_factor);
 
   int reduced_width, reduced_height;
+#if CONFIG_IST_REDUCE_METHOD4
+  if (size == 0) {
+    reduced_height = IST_4x4_HEIGHT;
+    reduced_width = IST_4x4_WIDTH;
+  }
+  else if (size == 1) {
+    reduced_height = IST_8x8_HEIGHT_RED;
+    reduced_width = IST_8x8_WIDTH;
+  }
+  else {
+    reduced_height = IST_8x8_HEIGHT;
+    reduced_width = IST_8x8_WIDTH;
+  }
+#else
   if (size == 4) {
     reduced_height = IST_4x4_HEIGHT;
     reduced_width = IST_4x4_WIDTH;
   } else {
+#if CONFIG_IST_REDUCE_METHOD3
+    reduced_height = IST_8x8_HEIGHT_RED;
+#else
     reduced_height = IST_8x8_HEIGHT;
+#endif
     reduced_width = IST_8x8_WIDTH;
   }
+#endif
   for (int j = 0; j < reduced_height; j++) {
     const int16_t *kernel_tmp = kernel;
     int *srcPtr = src;
@@ -6785,7 +6810,11 @@ void inv_stxfm_sse4_1(tran_low_t *src, tran_low_t *dst,
       tmp = _mm_add_epi32(tmp, sum);
       _mm_storeu_si128(tmpBlock, tmp);
     }
+#if CONFIG_IST_REDUCE_METHOD4
+    kernel += dimension;
+#else
     kernel += (size * size);
+#endif
   }
   int *out = dst;
   __m128i *tmpBlock = (__m128i *)out;

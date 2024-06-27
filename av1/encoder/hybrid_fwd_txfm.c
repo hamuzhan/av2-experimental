@@ -554,7 +554,12 @@ void av1_fwd_stxfm(tran_low_t *coeff, TxfmParam *txfm_param) {
       *tmp = src[scan_order_in[r]];
       tmp++;
     }
+#if CONFIG_IST_REDUCE_METHOD4
+    const int st_size_class = (width == 8 && height == 8) ? 1 : (width >= 8 && height >= 8) ? 2 : 0;
+    fwd_stxfm(buf0, buf1, mode_t, stx_type - 1, st_size_class);
+#else
     fwd_stxfm(buf0, buf1, mode_t, stx_type - 1, sb_size);
+#endif
     memset(coeff, 0, width * height * sizeof(tran_low_t));
     tmp = buf1;
     for (int i = 0; i < sb_size * sb_size; i++) {

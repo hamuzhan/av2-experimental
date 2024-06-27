@@ -668,28 +668,57 @@ void av1_inverse_transform_block(const MACROBLOCKD *xd,
 // Inverse secondary transform
 void inv_stxfm_c(tran_low_t *src, tran_low_t *dst, const PREDICTION_MODE mode,
                  const uint8_t stx_idx, const int size) {
+#if CONFIG_IST_REDUCE_METHOD4
+  const int16_t *kernel = (size == 0) ? ist_4x4_kernel[mode][stx_idx][0]
+                                      : ist_8x8_kernel[mode][stx_idx][0];
+  const int dimension = (size == 0) ? 16 : 64;
+#else
   const int16_t *kernel = (size == 4) ? ist_4x4_kernel[mode][stx_idx][0]
                                       : ist_8x8_kernel[mode][stx_idx][0];
+#endif
   int *out = dst;
   assert(stx_idx < 4);
   const int shift = 7;
   const int offset = 1 << (shift - 1);
 
   int reduced_width, reduced_height;
+#if CONFIG_IST_REDUCE_METHOD4
+  if (size == 0) {
+    reduced_height = IST_4x4_HEIGHT;
+    reduced_width = IST_4x4_WIDTH;
+  }
+  else if (size == 1) {
+    reduced_height = IST_8x8_HEIGHT_RED;
+    reduced_width = IST_8x8_WIDTH;
+  }
+  else {
+    reduced_height = IST_8x8_HEIGHT;
+    reduced_width = IST_8x8_WIDTH;
+  }
+#else
   if (size == 4) {
     reduced_height = IST_4x4_HEIGHT;
     reduced_width = IST_4x4_WIDTH;
   } else {
+#if CONFIG_IST_REDUCE_METHOD3
+    reduced_height = IST_8x8_HEIGHT_RED;
+#else
     reduced_height = IST_8x8_HEIGHT;
+#endif
     reduced_width = IST_8x8_WIDTH;
   }
+#endif
   for (int j = 0; j < reduced_width; j++) {
     int32_t resi = 0;
     const int16_t *kernel_tmp = kernel;
     int *srcPtr = src;
     for (int i = 0; i < reduced_height; i++) {
       resi += *srcPtr++ * *kernel_tmp;
+#if CONFIG_IST_REDUCE_METHOD4
+      kernel_tmp += dimension;
+#else
       kernel_tmp += (size * size);
+#endif
     }
     *out++ = (resi + offset) >> shift;
     kernel++;
@@ -758,7 +787,12 @@ void av1_inv_stxfm(tran_low_t *coeff, TxfmParam *txfm_param) {
       scan_order_out = (sb_size == 4) ? stx_scan_orders_4x4[log2width - 2]
                                       : stx_scan_orders_8x8[log2width - 2];
     }
+#if CONFIG_IST_REDUCE_METHOD4
+    const int st_size_class = (width == 8 && height == 8) ? 1 : (width >= 8 && height >= 8) ? 2 : 0;
+    inv_stxfm(buf0, buf1, mode_t, stx_type - 1, st_size_class);
+#else
     inv_stxfm(buf0, buf1, mode_t, stx_type - 1, sb_size);
+#endif
     tmp = buf1;
     src = coeff;
     for (int r = 0; r < sb_size * sb_size; r++) {

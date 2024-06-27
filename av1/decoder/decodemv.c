@@ -1441,7 +1441,9 @@ static void read_secondary_tx_set(MACROBLOCKD *xd, FRAME_CONTEXT *ec_ctx,
 #endif  // CONFIG_INTRA_TX_IST_PARSE
     assert(stx_set_flag < IST_DIR_SIZE);
   }
+#if !CONFIG_IST_REDUCE_METHOD1
   if (get_primary_tx_type(*tx_type) == ADST_ADST) stx_set_flag += IST_DIR_SIZE;
+#endif
   set_secondary_tx_set(tx_type, stx_set_flag);
 }
 

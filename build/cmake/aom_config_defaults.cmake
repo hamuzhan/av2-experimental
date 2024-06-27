@@ -141,6 +141,12 @@ set_aom_config_var(CONFIG_AV2CTC_PSNR_PEAK 1
 set_aom_config_var(CONFIG_ZERO_OFFSET_BITUPSHIFT 1
                    "Use zero offset for non-normative bit upshift")
 
+# IST reduction experiments.
+set_aom_config_var(CONFIG_IST_REDUCE_METHOD1 1 "AV2 IST reduction.")
+set_aom_config_var(CONFIG_IST_REDUCE_METHOD4 1 "AV2 remove worst-case multiplications.")
+set_aom_config_var(CONFIG_IST_REDUCE_METHOD2 0 "AV2 remove IST from ADST.")
+set_aom_config_var(CONFIG_IST_REDUCE_METHOD3 0 "AV2 IST reduction 8x8 size.")
+
 # AV2 experiment flags.
 set_aom_config_var(CONFIG_IMPROVEIDTX 1
                    "AV2 enable improved identity transform coding.")

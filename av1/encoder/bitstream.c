@@ -1624,7 +1624,9 @@ static void write_sec_tx_set(FRAME_CONTEXT *ec_ctx, aom_writer *w,
                              MB_MODE_INFO *mbmi, TX_TYPE tx_type) {
   TX_TYPE stx_set_flag = get_secondary_tx_set(tx_type);
   assert(stx_set_flag <= IST_SET_SIZE - 1);
+#if !CONFIG_IST_REDUCE_METHOD1
   if (get_primary_tx_type(tx_type) == ADST_ADST) stx_set_flag -= IST_DIR_SIZE;
+#endif
   assert(stx_set_flag < IST_DIR_SIZE);
   uint8_t intra_mode = get_intra_mode(mbmi, PLANE_TYPE_Y);
 #if CONFIG_INTRA_TX_IST_PARSE
