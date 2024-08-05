@@ -122,6 +122,11 @@ if(CONFIG_CCSO)
        "${AOM_ROOT}/av1/encoder/pickccso.h")
 endif()
 
+if(CONFIG_DQ)
+  list(APPEND AOM_AV1_ENCODER_SOURCES "${AOM_ROOT}/av1/encoder/trellis_quant.c"
+       "${AOM_ROOT}/av1/encoder/trellis_quant.h")
+endif()
+
 list(
   APPEND
   AOM_AV1_DECODER_SOURCES

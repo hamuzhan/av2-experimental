@@ -27,6 +27,11 @@ extern "C" {
 #define DQENABLE 0    // Determine whether to use DQ by dq_enable()
 #define NEWQINDEX 1   // QP shift
 #define MORESTATES 0  // 1: 8-state; 0: 4-state
+#if MORESTATES
+#define TOTALSTATES 8
+#else
+#define TOTALSTATES 4
+#endif
 #if CONFIG_LCCHROMA
 #define NEWHR \
   1  // 1:parity is determined by (base + LR) levels and not changed by HR
