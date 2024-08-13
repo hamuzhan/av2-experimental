@@ -38,11 +38,11 @@ static void tcq_levels_init(tcq_levels_t *lev, uint8_t *mem_tcq, int bufsize) {
 
 static void tcq_levels_swap(tcq_levels_t *lev) { lev->idx ^= 1; }
 
-static uint8_t *tcq_levels_prev(tcq_levels_t *lev, int st) {
+static uint8_t *tcq_levels_prev(const tcq_levels_t *lev, int st) {
   return &lev->base[(2 * st + lev->idx) * lev->bufsize];
 }
 
-static uint8_t *tcq_levels_cur(tcq_levels_t *lev, int st) {
+static uint8_t *tcq_levels_cur(const tcq_levels_t *lev, int st) {
   return &lev->base[(2 * st + !lev->idx) * lev->bufsize];
 }
 
@@ -1200,12 +1200,6 @@ void av1_get_rate_dist_lf_c(const struct LV_MAP_COEFF_COST *txb_costs,
     const int(*base_lf_cost_ptr)[DQ_CTXS][LF_BASE_SYMBOLS * 2] =
         plane > 0 ? txb_costs->base_lf_cost_uv : txb_costs->base_lf_cost;
     rate_zero[i] = base_lf_cost_ptr[base_ctx[i]][dq][0];
-    if (0)
-      printf(
-          "save_rate_zero[%d] = base_lf_cost_ptr[%d][%d][%d] = %04x %04x "
-          "coeff_ctx %02X diag_ctx %d\n",
-          i, base_ctx[i], dq, 0, base_lf_cost_ptr[base_ctx[i]][dq][0],
-          rate_zero[i], coeff_ctx[i], diag_ctx);
   }
 
   rate[0] = get_coeff_cost(blk_pos, absLevel[0], coeff_sign, base_ctx[0],
@@ -1472,10 +1466,84 @@ void trellis_loop_diagonal(
                          scan_hi, scan_lo, tcq_ctx);
 }
 
+void av1_init_lf_ctx_c(const uint8_t *lev, int scan_hi, int bwl,
+                       struct tcq_lf_ctx_t *lf_ctx) {
+  // Sample locations outside of the LF region that are needed
+  // to calculate LF neighbor contexts.
+  const uint8_t diag_scan[21] = { 0x00, 0x10, 0x01, 0x20, 0x11, 0x02, 0x30,
+                                  0x21, 0x12, 0x03, 0x40, 0x31, 0x22, 0x13,
+                                  0x04, 0x50, 0x41, 0x32, 0x23, 0x14, 0x05 };
+
+  for (int st = 0; st < 1; st++) {
+    memset(lf_ctx[st].last, 0, sizeof(lf_ctx[st].last));
+    for (int i = 0; i < 11; i++) {
+      int row_col = diag_scan[scan_hi + 1 + i];
+      int row = row_col >> 4;
+      int col = row_col & 15;
+      int blk_pos = (row << bwl) + col;
+      lf_ctx[st].last[i] = lev[get_padded_idx(blk_pos, bwl)];
+    }
+  }
+}
+
+// Initialize LF neighbor context.
+// The lf_ctx->last[] array tracks the last N previous coeffs (LIFO),
+// and used to calculate coeff neighbor contexts.
+void av1_calc_lf_ctx_c(const struct tcq_lf_ctx_t *lf_ctx, int scan_pos,
+                       uint8_t coeff_ctx[TOTALSTATES + 4]) {
+  static const int8_t kMaxCtx[16] = { 8, 6, 6, 4, 4, 4, 4, 4,
+                                      4, 4, 4, 4, 4, 4, 4, 4 };
+  static const int8_t kScanDiag[MAX_LF_SCAN] = { 0, 1, 1, 2, 2, 2, 3, 3, 3, 3 };
+  static const int8_t kNbrMask[4][11] = {
+    { 3, 3, 1, 3, 1, 0, 0, 0, 0, 0, 0 },  // diag 0
+    { 0, 3, 3, 0, 1, 3, 1, 0, 0, 0, 0 },  // diag 1
+    { 0, 0, 3, 3, 0, 0, 1, 3, 1, 0, 0 },  // diag 2
+    { 0, 0, 0, 3, 3, 0, 0, 0, 1, 3, 1 },  // diag 3
+  };
+
+  for (int st = 0; st < TOTALSTATES; st++) {
+    int diag = kScanDiag[scan_pos];
+    int base = 0;
+    int mid = 0;
+    for (int i = 0; i < 11; i++) {
+      int mask = kNbrMask[diag][i];
+      if (mask) {
+        base += AOMMIN(lf_ctx[st].last[i], 5);
+        if (mask >> 1) {
+          mid += AOMMIN(lf_ctx[st].last[i], MAX_VAL_BR_CTX);
+        }
+      }
+    }
+    int base_ctx = AOMMIN((base + 1) >> 1, kMaxCtx[scan_pos]);
+    int mid_ctx = AOMMIN((mid + 1) >> 1, 6) + ((scan_pos == 0) ? 0 : 7);
+    coeff_ctx[st] = base_ctx + (mid_ctx << 4);
+  }
+}
+
+void av1_update_lf_ctx_c(const struct tcq_node_t *decision,
+                         struct tcq_lf_ctx_t *lf_ctx) {
+  tcq_lf_ctx_t save[TOTALSTATES];
+  memcpy(save, lf_ctx, sizeof(tcq_lf_ctx_t) * TOTALSTATES);
+
+  for (int st = 0; st < TOTALSTATES; st++) {
+    int absLevel = decision[st].absLevel;
+    int prevId = decision[st].prevId;
+    int new_eob = prevId < 0;
+    if (new_eob) {
+      memset(lf_ctx[st].last, 0, sizeof(lf_ctx[st].last));
+    } else {
+      for (int i = 15; i > 0; i--) {
+        lf_ctx[st].last[i] = save[prevId].last[i - 1];
+      }
+    }
+    lf_ctx[st].last[0] = AOMMIN(absLevel, INT8_MAX);
+  }
+}
+
 // Handle trellis Low-freq (LF) region for Luma, TX_CLASS_2D blocks.
-void trellis_loop_lf(int first_scan_pos, int scan_hi, int scan_lo, int plane,
-                     TX_SIZE tx_size, TX_TYPE tx_type, int32_t *tmp_sign,
-                     int sharpness, tcq_levels_t *tcq_lev,
+void trellis_loop_lf(int scan_hi, int scan_lo, int plane, TX_SIZE tx_size,
+                     TX_TYPE tx_type, int32_t *tmp_sign, int sharpness,
+                     tcq_levels_t *tcq_lev,
                      tcq_node_t trellis[MAX_TRELLIS][TOTALSTATES],
                      tran_low_t *qcoeff, const int64_t rdmult,
                      const int16_t *scan, const tran_low_t *tcoeff,
@@ -1490,9 +1558,13 @@ void trellis_loop_lf(int first_scan_pos, int scan_hi, int scan_lo, int plane,
   assert(plane == 0);
   assert(tx_class == TX_CLASS_2D);
 
-  for (int scan_pos = scan_hi; scan_pos >= scan_lo; scan_pos--) {
-    tcq_levels_swap(tcq_lev);
+  tcq_lf_ctx_t lf_ctx[TOTALSTATES];
+  for (int i = 0; i < TOTALSTATES; i++) {
+    uint8_t *lev = tcq_levels_cur(tcq_lev, i);
+    av1_init_lf_ctx(lev, scan_hi, bwl, &lf_ctx[i]);
+  }
 
+  for (int scan_pos = scan_hi; scan_pos >= scan_lo; scan_pos--) {
     int blk_pos = scan[scan_pos];
 
     tcq_node_t *decision = trellis[scan_pos];
@@ -1511,15 +1583,7 @@ void trellis_loop_lf(int first_scan_pos, int scan_hi, int scan_lo, int plane,
     // calculate contexts
     int diag_ctx = get_nz_map_ctx_from_stats_lf(0, blk_pos, bwl, tx_class);
     uint8_t coeff_ctx[TOTALSTATES + 4];
-    for (int i = 0; i < TOTALSTATES; i++) {
-      uint8_t *prev_lev = tcq_levels_prev(tcq_lev, i);
-      coeff_ctx[i] = get_lower_levels_lf_ctx(prev_lev, blk_pos, bwl, tx_class);
-      int br_ctx = plane
-                       ? get_br_lf_ctx_chroma(prev_lev, blk_pos, bwl, tx_class)
-                       : get_br_lf_ctx(prev_lev, blk_pos, bwl, tx_class);
-      coeff_ctx[i] -= diag_ctx;
-      coeff_ctx[i] += br_ctx << 4;
-    }
+    av1_calc_lf_ctx(lf_ctx, scan_pos, coeff_ctx);
 
     // calculate rate distortion
     int rate_zero[TOTALSTATES];
@@ -1565,21 +1629,7 @@ void trellis_loop_lf(int first_scan_pos, int scan_hi, int scan_lo, int plane,
              limits, 0, -1, &decision[state0], &decision[state1]);
     }
 
-    // copy corresponding context from previous level buffer
-    for (int state = 0; state < TOTALSTATES && scan_pos != first_scan_pos;
-         state++) {
-      if (decision[state].prevId >= 0) {
-        uint8_t *prev_lev = tcq_levels_prev(tcq_lev, decision[state].prevId);
-        uint8_t *cur_lev = tcq_levels_cur(tcq_lev, state);
-        memcpy(cur_lev, prev_lev, sizeof(uint8_t) * tcq_lev->bufsize);
-      }
-    }
-    // update levels_buf
-    for (int state = 0; state < TOTALSTATES && scan_pos != 0; state++) {
-      uint8_t *cur_lev = tcq_levels_cur(tcq_lev, state);
-      set_levels_buf(decision[state].prevId, decision[state].absLevel, cur_lev,
-                     scan, first_scan_pos, scan_pos, bwl, sharpness);
-    }
+    av1_update_lf_ctx(decision, lf_ctx);
   }
 }
 
@@ -1881,10 +1931,10 @@ int av1_dep_quant(const struct AV1_COMP *cpi, MACROBLOCK *x, int plane,
                               block_eob_rate, txb_ctx, txb_costs);
         scan_hi = scan_lo - 1;
       }
-      trellis_loop_lf(first_scan_pos, scan_hi, 0, plane, tx_size, tx_type,
-                      xd->tmp_sign, sharpness, &tcq_lev, trellis, qcoeff,
-                      rdmult, scan, tcoeff, dequant, quant, iqmatrix,
-                      block_eob_rate, txb_ctx, txb_costs);
+      trellis_loop_lf(scan_hi, 0, plane, tx_size, tx_type, xd->tmp_sign,
+                      sharpness, &tcq_lev, trellis, qcoeff, rdmult, scan,
+                      tcoeff, dequant, quant, iqmatrix, block_eob_rate, txb_ctx,
+                      txb_costs);
     } else {
       trellis_loop(first_scan_pos, scan_hi, 0, plane, tx_size, tx_type,
                    xd->tmp_sign, sharpness, &tcq_lev, trellis, qcoeff, rdmult,

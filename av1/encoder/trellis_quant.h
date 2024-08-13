@@ -26,6 +26,7 @@ extern "C" {
 #endif
 
 #define MAX_DIAG 32
+#define MAX_LF_SCAN 10
 
 typedef struct tcq_node_t {
   int64_t rdCost : 64;
@@ -39,6 +40,10 @@ typedef struct tcq_ctx_t {
   uint8_t lev[MAX_DIAG];
   int8_t orig_id;
 } tcq_ctx_t;
+
+typedef struct tcq_lf_ctx_t {
+  uint8_t last[16];
+} tcq_lf_ctx_t;
 
 typedef struct prequant_t {
   int32_t absLevel[4];

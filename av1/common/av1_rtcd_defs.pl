@@ -37,6 +37,7 @@ struct NN_CONFIG;
 typedef struct NN_CONFIG NN_CONFIG;
 struct tcq_node_t;
 struct tcq_ctx_t;
+struct tcq_lf_ctx_t;
 struct prequant_t;
 struct LV_MAP_COEFF_COST;
 
@@ -333,6 +334,12 @@ if (aom_config("CONFIG_AV1_ENCODER") eq "yes") {
     specialize qw/av1_get_rate_dist_lf avx2/;
     add_proto qw/void av1_update_states/, "struct tcq_node_t *decision, int scan_idx, struct tcq_ctx_t *tcq_ctx";
     specialize qw/av1_update_states avx2/;
+    add_proto qw/void av1_init_lf_ctx/, "const uint8_t *lev, int scan_hi, int bwl, struct tcq_lf_ctx_t *lf_ctx";
+    specialize qw/av1_init_lf_ctx avx2/;
+    add_proto qw/void av1_calc_lf_ctx/, "const struct tcq_lf_ctx_t *lf_ctx, int scan_pos, uint8_t coeff_ctx[TOTALSTATES + 4]";
+    specialize qw/av1_calc_lf_ctx avx2/;
+    add_proto qw/void av1_update_lf_ctx/, "const struct tcq_node_t *decision, struct tcq_lf_ctx_t *lf_ctx";
+    specialize qw/av1_update_lf_ctx avx2/;
   }
 
   # fdct functions
