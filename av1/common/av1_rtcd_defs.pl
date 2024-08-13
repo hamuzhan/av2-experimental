@@ -330,8 +330,10 @@ if (aom_config("CONFIG_AV1_ENCODER") eq "yes") {
     specialize qw/av1_get_rate_dist_def_luma avx2/;
     add_proto qw/void av1_get_rate_dist_def_chroma/, "const struct LV_MAP_COEFF_COST* txb_costs, const struct prequant_t *pq, const uint8_t coeff_ctx[TOTALSTATES + 4], int diag_ctx, int plane, int t_sign, int sign, int32_t rate_zero[TOTALSTATES], int32_t rate[2 * TOTALSTATES], int64_t dist[2 * TOTALSTATES]";
     specialize qw/av1_get_rate_dist_def_chroma avx2/;
-    add_proto qw/void av1_get_rate_dist_lf/, "const struct LV_MAP_COEFF_COST *txb_costs, const struct prequant_t *pq, const uint8_t coeff_ctx[TOTALSTATES + 4], int diag_ctx, int dc_sign_ctx, int32_t *tmp_sign, int bwl, TX_CLASS tx_class, int plane, int blk_pos, int coeff_sign, int32_t rate_zero[TOTALSTATES], int32_t rate[2 * TOTALSTATES], int64_t dist[2 * TOTALSTATES]";
-    specialize qw/av1_get_rate_dist_lf avx2/;
+    add_proto qw/void av1_get_rate_dist_lf_luma/, "const struct LV_MAP_COEFF_COST *txb_costs, const struct prequant_t *pq, const uint8_t coeff_ctx[TOTALSTATES + 4], int diag_ctx, int dc_sign_ctx, int32_t *tmp_sign, int bwl, TX_CLASS tx_class, int blk_pos, int coeff_sign, int32_t rate_zero[TOTALSTATES], int32_t rate[2 * TOTALSTATES], int64_t dist[2 * TOTALSTATES]";
+    specialize qw/av1_get_rate_dist_lf_luma avx2/;
+    add_proto qw/void av1_get_rate_dist_lf_chroma/, "const struct LV_MAP_COEFF_COST *txb_costs, const struct prequant_t *pq, const uint8_t coeff_ctx[TOTALSTATES + 4], int diag_ctx, int dc_sign_ctx, int32_t *tmp_sign, int bwl, TX_CLASS tx_class, int plane, int blk_pos, int coeff_sign, int32_t rate_zero[TOTALSTATES], int32_t rate[2 * TOTALSTATES], int64_t dist[2 * TOTALSTATES]";
+    specialize qw/av1_get_rate_dist_lf_chroma avx2/;
     add_proto qw/void av1_update_states/, "struct tcq_node_t *decision, int scan_idx, struct tcq_ctx_t *tcq_ctx";
     specialize qw/av1_update_states avx2/;
     add_proto qw/void av1_init_lf_ctx/, "const uint8_t *lev, int scan_hi, int bwl, struct tcq_lf_ctx_t *lf_ctx";
