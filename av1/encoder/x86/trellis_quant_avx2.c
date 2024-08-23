@@ -531,10 +531,10 @@ void av1_get_rate_dist_def_luma_avx2(const struct LV_MAP_COEFF_COST *txb_costs,
     for (int i = 0; i < TOTALSTATES; i++) {
       int a0 = i & 2 ? 1 : 0;
       int a1 = a0 + 2;
-      int mid_cost0 =
-          get_mid_cost_def(absLevel[a0], coeff_ctx->coef[i], txb_costs, 0, 0, 0);
-      int mid_cost1 =
-          get_mid_cost_def(absLevel[a1], coeff_ctx->coef[i], txb_costs, 0, 0, 0);
+      int mid_cost0 = get_mid_cost_def(absLevel[a0], coeff_ctx->coef[i],
+                                       txb_costs, 0, 0, 0);
+      int mid_cost1 = get_mid_cost_def(absLevel[a1], coeff_ctx->coef[i],
+                                       txb_costs, 0, 0, 0);
       rd->rate[2 * i] += mid_cost0;
       rd->rate[2 * i + 1] += mid_cost1;
     }
@@ -751,12 +751,12 @@ void av1_get_rate_dist_lf_luma_avx2(const struct LV_MAP_COEFF_COST *txb_costs,
     for (int i = 0; i < TOTALSTATES; i++) {
       int a0 = i & 2 ? 1 : 0;
       int a1 = a0 + 2;
-      int mid_cost0 =
-          get_mid_cost_lf_dc(blk_pos, absLevel[a0], coeff_sign, coeff_ctx->coef[i],
-                             dc_sign_ctx, txb_costs, tmp_sign, plane);
-      int mid_cost1 =
-          get_mid_cost_lf_dc(blk_pos, absLevel[a1], coeff_sign, coeff_ctx->coef[i],
-                             dc_sign_ctx, txb_costs, tmp_sign, plane);
+      int mid_cost0 = get_mid_cost_lf_dc(blk_pos, absLevel[a0], coeff_sign,
+                                         coeff_ctx->coef[i], dc_sign_ctx,
+                                         txb_costs, tmp_sign, plane);
+      int mid_cost1 = get_mid_cost_lf_dc(blk_pos, absLevel[a1], coeff_sign,
+                                         coeff_ctx->coef[i], dc_sign_ctx,
+                                         txb_costs, tmp_sign, plane);
       rd->rate[2 * i] += mid_cost0;
       rd->rate[2 * i + 1] += mid_cost1;
     }
@@ -888,12 +888,12 @@ void av1_get_rate_dist_lf_chroma_avx2(const struct LV_MAP_COEFF_COST *txb_costs,
     for (int i = 0; i < TOTALSTATES; i++) {
       int a0 = i & 2 ? 1 : 0;
       int a1 = a0 + 2;
-      int mid_cost0 =
-          get_mid_cost_lf_dc(blk_pos, absLevel[a0], coeff_sign, coeff_ctx->coef[i],
-                             dc_sign_ctx, txb_costs, tmp_sign, plane);
-      int mid_cost1 =
-          get_mid_cost_lf_dc(blk_pos, absLevel[a1], coeff_sign, coeff_ctx->coef[i],
-                             dc_sign_ctx, txb_costs, tmp_sign, plane);
+      int mid_cost0 = get_mid_cost_lf_dc(blk_pos, absLevel[a0], coeff_sign,
+                                         coeff_ctx->coef[i], dc_sign_ctx,
+                                         txb_costs, tmp_sign, plane);
+      int mid_cost1 = get_mid_cost_lf_dc(blk_pos, absLevel[a1], coeff_sign,
+                                         coeff_ctx->coef[i], dc_sign_ctx,
+                                         txb_costs, tmp_sign, plane);
       rd->rate[2 * i] += mid_cost0;
       rd->rate[2 * i + 1] += mid_cost1;
     }
@@ -1002,10 +1002,10 @@ void av1_get_rate_dist_def_chroma_avx2(
     for (int i = 0; i < TOTALSTATES; i++) {
       int a0 = i & 2 ? 1 : 0;
       int a1 = a0 + 2;
-      int mid_cost0 = get_mid_cost_def(absLevel[a0], coeff_ctx->coef[i], txb_costs,
-                                       plane, t_sign, sign);
-      int mid_cost1 = get_mid_cost_def(absLevel[a1], coeff_ctx->coef[i], txb_costs,
-                                       plane, t_sign, sign);
+      int mid_cost0 = get_mid_cost_def(absLevel[a0], coeff_ctx->coef[i],
+                                       txb_costs, plane, t_sign, sign);
+      int mid_cost1 = get_mid_cost_def(absLevel[a1], coeff_ctx->coef[i],
+                                       txb_costs, plane, t_sign, sign);
       rd->rate[2 * i] += mid_cost0;
       rd->rate[2 * i + 1] += mid_cost1;
     }
@@ -1062,7 +1062,8 @@ void av1_init_lf_ctx_avx2(const uint8_t *lev, int scan_hi, int bwl,
 // Pre-calculate eob bits (rate) for each EOB candidate position from 1
 // to the initial eob location. Store rate in array block_eob_rate[],
 // starting with index.
-void av1_calc_block_eob_rate_avx2(struct macroblock *x, int plane, TX_SIZE tx_size, int eob,
+void av1_calc_block_eob_rate_avx2(struct macroblock *x, int plane,
+                                  TX_SIZE tx_size, int eob,
                                   uint16_t *block_eob_rate) {
   const MACROBLOCKD *xd = &x->e_mbd;
   const MB_MODE_INFO *mbmi = xd->mi[0];
@@ -1081,27 +1082,20 @@ void av1_calc_block_eob_rate_avx2(struct macroblock *x, int plane, TX_SIZE tx_si
 #else
   const int *tbl_eob_cost = txb_eob_costs->eob_cost;
 #endif
-  const int (*tbl_eob_extra)[2] = txb_costs->eob_extra_cost;
+  const int(*tbl_eob_extra)[2] = txb_costs->eob_extra_cost;
 
   static const int8_t kShuf[4][32] = {
-    {
-      -1, -1, -1, -1, 0, 1, 4, 5, 8, 9, 8, 9, 12, 13, 12, 13,
-      0, 1, 0, 1, 0, 1, 0, 1, 4, 5, 4, 5, 4, 5, 4, 5
-    },
-    {
-      0, 1, 4, 5, 8, 9, 8, 9, 12, 13, 12, 13, 12, 13, 12, 13,
-      0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1
-    },
-    {
-      8, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8, 9, 8, 9,
-      12, 13, 12, 13, 12, 13, 12, 13, 12, 13, 12, 13, 12, 13, 12, 13
-    },
+    { -1, -1, -1, -1, 0, 1, 4, 5, 8, 9, 8, 9, 12, 13, 12, 13,
+      0,  1,  0,  1,  0, 1, 0, 1, 4, 5, 4, 5, 4,  5,  4,  5 },
+    { 0, 1, 4, 5, 8, 9, 8, 9, 12, 13, 12, 13, 12, 13, 12, 13,
+      0, 1, 0, 1, 0, 1, 0, 1, 0,  1,  0,  1,  0,  1,  0,  1 },
+    { 8,  9,  8,  9,  8,  9,  8,  9,  8,  9,  8,  9,  8,  9,  8,  9,
+      12, 13, 12, 13, 12, 13, 12, 13, 12, 13, 12, 13, 12, 13, 12, 13 },
   };
 #define BC1 (1 << AV1_PROB_COST_SHIFT)
 #define BC2 (2 * BC1)
   static const uint16_t kBitCost[16] = {
-    0, 0, 0, 0, BC1, BC1, BC1, BC1,
-    BC2, BC2, BC2, BC2, BC2, BC2, BC2, BC2
+    0, 0, 0, 0, BC1, BC1, BC1, BC1, BC2, BC2, BC2, BC2, BC2, BC2, BC2, BC2
   };
 
   // Write first 16 costs, block_eob_rate[0:15]
@@ -1148,4 +1142,104 @@ void av1_calc_block_eob_rate_avx2(struct macroblock *x, int plane, TX_SIZE tx_si
     }
     n_offset_bits++;
   }
+}
+
+static AOM_FORCE_INLINE int get_dqv(const int32_t *dequant, int coeff_idx,
+                                    const qm_val_t *iqmatrix) {
+  int dqv = dequant[!!coeff_idx];
+  if (iqmatrix != NULL)
+    dqv =
+        ((iqmatrix[coeff_idx] * dqv) + (1 << (AOM_QM_BITS - 1))) >> AOM_QM_BITS;
+  return dqv;
+}
+
+int av1_find_best_path_avx2(const struct tcq_node_t *trellis,
+                            const int16_t *scan, const int32_t *dequant,
+                            const qm_val_t *iqmatrix, const tran_low_t *tcoeff,
+                            int first_scan_pos, int log_scale,
+                            tran_low_t *qcoeff, tran_low_t *dqcoeff,
+                            int *min_rate, int64_t *min_cost) {
+  // Select best trellis state.
+  int64_t min_path_cost = INT64_MAX;
+  int trel_min_rate = INT32_MAX;
+  int prev_id = -2;
+  for (int state = 0; state < TOTALSTATES; state++) {
+    const tcq_node_t *decision = &trellis[state];
+    if (decision->rdCost < min_path_cost) {
+      prev_id = state;
+      min_path_cost = decision->rdCost;
+      trel_min_rate = decision->rate;
+    }
+  }
+
+  // Backtrack to reconstruct qcoeff / dqcoeff blocks.
+  int scan_pos = 0;
+  if (!iqmatrix) {
+    __m128i dqv = _mm_loadu_si64(dequant);
+    __m128i dqv_ac = _mm_srli_si128(dqv, 4);
+    __m128i zero = _mm_setzero_si128();
+    __m128i round = _mm_set1_epi64x(1 << (QUANT_TABLE_BITS - 1));
+    int shift = QUANT_TABLE_BITS + log_scale;
+    for (; prev_id >= 0; scan_pos++) {
+      const int32_t *decision =
+          (int32_t *)&trellis[scan_pos * TOTALSTATES + prev_id];
+      __m128i info = _mm_loadu_si64(&decision[3]);
+      int blk_pos = scan[scan_pos];
+      __m128i sign = _mm_loadu_si64(&tcoeff[blk_pos]);
+      sign = _mm_srai_epi32(sign, 31);
+      __m128i abs_lev = _mm_slli_epi32(info, 8);
+      __m128i abs_lev2 = _mm_srli_epi32(abs_lev, 7);
+      abs_lev = _mm_srli_epi32(abs_lev, 8);
+      __m128i dq = _mm_srai_epi32(info, 25);
+      __m128i dq_mask = _mm_srai_epi32(info, 31);
+      dq = _mm_andnot_si128(dq_mask, dq);
+      abs_lev2 = _mm_sub_epi32(abs_lev2, dq);
+      abs_lev2 = _mm_max_epi32(abs_lev2, zero);
+      __m128i dqc = _mm_mul_epi32(abs_lev2, dqv);
+      dqc = _mm_add_epi64(dqc, round);
+      dqc = _mm_srli_epi64(dqc, shift);
+      dqc = _mm_xor_si128(dqc, sign);
+      dqc = _mm_sub_epi32(dqc, sign);
+      __m128i lev = _mm_xor_si128(abs_lev, sign);
+      lev = _mm_sub_epi32(lev, sign);
+#if 1
+      // Older compilers don't implement _mm_storeu_si32()
+      _mm_store_ss((float *)&qcoeff[blk_pos], _mm_castsi128_ps(lev));
+      _mm_store_ss((float *)&dqcoeff[blk_pos], _mm_castsi128_ps(dqc));
+#else
+      _mm_storeu_si32(&qcoeff[blk_pos], lev);
+      _mm_storeu_si32(&dqcoeff[blk_pos], dqc);
+#endif
+      dqv = dqv_ac;
+      __m128i prevId = _mm_srai_epi32(info, 24);
+      prev_id = _mm_extract_epi32(prevId, 0);
+    }
+  } else {
+    for (; prev_id >= 0; scan_pos++) {
+      const tcq_node_t *decision = &trellis[scan_pos * TOTALSTATES + prev_id];
+      prev_id = decision->prevId;
+      int abs_level = decision->absLevel;
+      int blk_pos = scan[scan_pos];
+      int sign = tcoeff[blk_pos] < 0;
+      qcoeff[blk_pos] = sign ? -abs_level : abs_level;
+      int dqv = get_dqv(dequant, blk_pos, iqmatrix);
+      int dq = prev_id >= 0 ? tcq_quant(prev_id) : 0;
+      int qc = (abs_level == 0) ? 0 : (2 * abs_level - dq);
+      int dqc = (tran_low_t)ROUND_POWER_OF_TWO_64((tran_high_t)qc * dqv,
+                                                  QUANT_TABLE_BITS) >>
+                log_scale;
+      dqcoeff[blk_pos] = sign ? -dqc : dqc;
+    }
+  }
+  int eob = scan_pos;
+
+  for (; scan_pos <= first_scan_pos; scan_pos++) {
+    int blk_pos = scan[scan_pos];
+    qcoeff[blk_pos] = 0;
+    dqcoeff[blk_pos] = 0;
+  }
+
+  *min_rate = trel_min_rate;
+  *min_cost = min_path_cost;
+  return eob;
 }

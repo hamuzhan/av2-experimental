@@ -972,7 +972,7 @@ static int get_coeff_cost(int ci, tran_low_t abs_qc, int sign, int coeff_ctx,
 }
 
 void trellis_first_pos(int scan_pos, int plane, TX_SIZE tx_size,
-                       TX_TYPE tx_type, int32_t *tmp_sign, int sharpness,
+                       TX_CLASS tx_class, int32_t *tmp_sign, int sharpness,
                        tcq_levels_t *tcq_lev,
                        tcq_node_t trellis[MAX_TRELLIS][TOTALSTATES],
                        tran_low_t *qcoeff, const int64_t rdmult,
@@ -984,7 +984,6 @@ void trellis_first_pos(int scan_pos, int plane, TX_SIZE tx_size,
   const int bwl = get_txb_bwl(tx_size);
   const int height = get_txb_high(tx_size);
   const int shift = av1_get_tx_scale(tx_size);
-  const TX_CLASS tx_class = tx_type_to_class[get_primary_tx_type(tx_type)];
 
   int blk_pos = scan[scan_pos];
   tcq_node_t *decision = trellis[scan_pos];
@@ -1057,22 +1056,22 @@ void av1_get_rate_dist_def_luma_c(const struct LV_MAP_COEFF_COST *txb_costs,
     int a0 = dq;
     int a1 = a0 + 2;
     int base_ctx = diag_ctx + (coeff_ctx->coef[i] & 15);
-    int cost0 = get_coeff_cost_def(absLevel[a0], coeff_ctx->coef[i], diag_ctx, plane,
-                                   txb_costs, dq, t_sign, sign);
-    int cost1 = get_coeff_cost_def(absLevel[a1], coeff_ctx->coef[i], diag_ctx, plane,
-                                   txb_costs, dq, t_sign, sign);
+    int cost0 = get_coeff_cost_def(absLevel[a0], coeff_ctx->coef[i], diag_ctx,
+                                   plane, txb_costs, dq, t_sign, sign);
+    int cost1 = get_coeff_cost_def(absLevel[a1], coeff_ctx->coef[i], diag_ctx,
+                                   plane, txb_costs, dq, t_sign, sign);
     rd->rate_zero[i] = txb_costs->base_cost[base_ctx][dq][0];
     rd->rate[2 * i] = cost0;
     rd->rate[2 * i + 1] = cost1;
   }
   rd->rate_eob[0] =
       eob_rate + get_coeff_cost_eob(blk_pos, absLevel[0], sign,
-                                    coeff_ctx->coef_eob, dc_sign_ctx,
-                                    txb_costs, bwl, tx_class, t_sign, plane);
+                                    coeff_ctx->coef_eob, dc_sign_ctx, txb_costs,
+                                    bwl, tx_class, t_sign, plane);
   rd->rate_eob[1] =
       eob_rate + get_coeff_cost_eob(blk_pos, absLevel[2], sign,
-                                    coeff_ctx->coef_eob, dc_sign_ctx,
-                                    txb_costs, bwl, tx_class, t_sign, plane);
+                                    coeff_ctx->coef_eob, dc_sign_ctx, txb_costs,
+                                    bwl, tx_class, t_sign, plane);
 }
 
 void av1_get_rate_dist_def_chroma_c(const struct LV_MAP_COEFF_COST *txb_costs,
@@ -1090,22 +1089,22 @@ void av1_get_rate_dist_def_chroma_c(const struct LV_MAP_COEFF_COST *txb_costs,
     int a0 = dq;
     int a1 = a0 + 2;
     int base_ctx = diag_ctx + (coeff_ctx->coef[i] & 15);
-    int cost0 = get_coeff_cost_def(absLevel[a0], coeff_ctx->coef[i], diag_ctx, plane,
-                                   txb_costs, dq, t_sign, sign);
-    int cost1 = get_coeff_cost_def(absLevel[a1], coeff_ctx->coef[i], diag_ctx, plane,
-                                   txb_costs, dq, t_sign, sign);
+    int cost0 = get_coeff_cost_def(absLevel[a0], coeff_ctx->coef[i], diag_ctx,
+                                   plane, txb_costs, dq, t_sign, sign);
+    int cost1 = get_coeff_cost_def(absLevel[a1], coeff_ctx->coef[i], diag_ctx,
+                                   plane, txb_costs, dq, t_sign, sign);
     rd->rate_zero[i] = txb_costs->base_cost_uv[base_ctx][dq][0];
     rd->rate[2 * i] = cost0;
     rd->rate[2 * i + 1] = cost1;
   }
   rd->rate_eob[0] =
       eob_rate + get_coeff_cost_eob(blk_pos, absLevel[0], sign,
-                                    coeff_ctx->coef_eob, dc_sign_ctx,
-                                    txb_costs, bwl, tx_class, t_sign, plane);
+                                    coeff_ctx->coef_eob, dc_sign_ctx, txb_costs,
+                                    bwl, tx_class, t_sign, plane);
   rd->rate_eob[1] =
       eob_rate + get_coeff_cost_eob(blk_pos, absLevel[2], sign,
-                                    coeff_ctx->coef_eob, dc_sign_ctx,
-                                    txb_costs, bwl, tx_class, t_sign, plane);
+                                    coeff_ctx->coef_eob, dc_sign_ctx, txb_costs,
+                                    bwl, tx_class, t_sign, plane);
 }
 
 void av1_get_rate_dist_lf_luma_c(const struct LV_MAP_COEFF_COST *txb_costs,
@@ -1139,12 +1138,12 @@ void av1_get_rate_dist_lf_luma_c(const struct LV_MAP_COEFF_COST *txb_costs,
   }
   rd->rate_eob[0] =
       eob_rate + get_coeff_cost_eob(blk_pos, absLevel[0], coeff_sign,
-                                    coeff_ctx->coef_eob, dc_sign_ctx,
-                                    txb_costs, bwl, tx_class, t_sign, plane);
+                                    coeff_ctx->coef_eob, dc_sign_ctx, txb_costs,
+                                    bwl, tx_class, t_sign, plane);
   rd->rate_eob[1] =
       eob_rate + get_coeff_cost_eob(blk_pos, absLevel[2], coeff_sign,
-                                    coeff_ctx->coef_eob, dc_sign_ctx,
-                                    txb_costs, bwl, tx_class, t_sign, plane);
+                                    coeff_ctx->coef_eob, dc_sign_ctx, txb_costs,
+                                    bwl, tx_class, t_sign, plane);
 }
 
 void av1_get_rate_dist_lf_chroma_c(const struct LV_MAP_COEFF_COST *txb_costs,
@@ -1177,12 +1176,12 @@ void av1_get_rate_dist_lf_chroma_c(const struct LV_MAP_COEFF_COST *txb_costs,
   }
   rd->rate_eob[0] =
       eob_rate + get_coeff_cost_eob(blk_pos, absLevel[0], coeff_sign,
-                                    coeff_ctx->coef_eob, dc_sign_ctx,
-                                    txb_costs, bwl, tx_class, t_sign, plane);
+                                    coeff_ctx->coef_eob, dc_sign_ctx, txb_costs,
+                                    bwl, tx_class, t_sign, plane);
   rd->rate_eob[1] =
       eob_rate + get_coeff_cost_eob(blk_pos, absLevel[2], coeff_sign,
-                                    coeff_ctx->coef_eob, dc_sign_ctx,
-                                    txb_costs, bwl, tx_class, t_sign, plane);
+                                    coeff_ctx->coef_eob, dc_sign_ctx, txb_costs,
+                                    bwl, tx_class, t_sign, plane);
 }
 
 void av1_calc_diag_ctx_c(int scan_hi, int scan_lo, int bwl,
@@ -1215,13 +1214,12 @@ void av1_update_states_c(tcq_node_t *decision, int scan_idx,
   }
 }
 
-static void update_levels_diagonal(tcq_levels_t *tcq_lev,
-                                   const int16_t *scan, int bufsize, int bwl,
-                                   int scan_hi, int scan_lo,
-                                   const tcq_ctx_t *tcq_ctx) {
+static void update_levels_diagonal(tcq_levels_t *tcq_lev, const int16_t *scan,
+                                   int bufsize, int bwl, int scan_hi,
+                                   int scan_lo, const tcq_ctx_t *tcq_ctx) {
   for (int i = 0; i < TOTALSTATES; i++) {
     int orig_id = tcq_ctx[i].orig_id;
-    uint8_t *cur_lev  = tcq_levels_cur(tcq_lev, i);
+    uint8_t *cur_lev = tcq_levels_cur(tcq_lev, i);
     uint8_t *prev_lev = tcq_levels_prev(tcq_lev, orig_id);
     if (orig_id >= 0) {
       memcpy(cur_lev, prev_lev, bufsize);
@@ -1237,7 +1235,7 @@ static void update_levels_diagonal(tcq_levels_t *tcq_lev,
 
 // Handle trellis default region for Luma, TX_CLASS_2D blocks.
 void trellis_loop_diagonal(
-    int scan_hi, int scan_lo, int plane, TX_SIZE tx_size, TX_TYPE tx_type,
+    int scan_hi, int scan_lo, int plane, TX_SIZE tx_size, TX_CLASS tx_class,
     int32_t *tmp_sign, int sharpness, tcq_levels_t *tcq_lev,
     tcq_ctx_t tcq_ctx[TOTALSTATES],
     tcq_node_t trellis[MAX_TRELLIS][TOTALSTATES], tran_low_t *qcoeff,
@@ -1248,7 +1246,6 @@ void trellis_loop_diagonal(
   const int bwl = get_txb_bwl(tx_size);
   const int height = get_txb_high(tx_size);
   const int shift = av1_get_tx_scale(tx_size);
-  const TX_CLASS tx_class = tx_type_to_class[get_primary_tx_type(tx_type)];
   const int pos0 = scan[scan_hi];
   const int diag_ctx = get_nz_map_ctx_from_stats(0, pos0, bwl, TX_CLASS_2D, 0);
   assert(plane == 0);
@@ -1311,8 +1308,8 @@ void trellis_loop_diagonal(
     nxt_ctx = tmp;
   }
 
-  update_levels_diagonal(tcq_lev, scan, tcq_lev->bufsize, bwl,
-                         scan_hi, scan_lo, cur_ctx);
+  update_levels_diagonal(tcq_lev, scan, tcq_lev->bufsize, bwl, scan_hi, scan_lo,
+                         cur_ctx);
 }
 
 void av1_init_lf_ctx_c(const uint8_t *lev, int scan_hi, int bwl,
@@ -1391,7 +1388,7 @@ void av1_update_lf_ctx_c(const struct tcq_node_t *decision,
 
 // Handle trellis Low-freq (LF) region for Luma, TX_CLASS_2D blocks.
 void trellis_loop_lf(int scan_hi, int scan_lo, int plane, TX_SIZE tx_size,
-                     TX_TYPE tx_type, int32_t *tmp_sign, int sharpness,
+                     TX_CLASS tx_class, int32_t *tmp_sign, int sharpness,
                      tcq_levels_t *tcq_lev,
                      tcq_node_t trellis[MAX_TRELLIS][TOTALSTATES],
                      tran_low_t *qcoeff, const int64_t rdmult,
@@ -1403,7 +1400,6 @@ void trellis_loop_lf(int scan_hi, int scan_lo, int plane, TX_SIZE tx_size,
   const int bwl = get_txb_bwl(tx_size);
   const int height = get_txb_high(tx_size);
   const int shift = av1_get_tx_scale(tx_size);
-  const TX_CLASS tx_class = tx_type_to_class[get_primary_tx_type(tx_type)];
   assert(plane == 0);
   assert(tx_class == TX_CLASS_2D);
   (void)plane;
@@ -1453,7 +1449,7 @@ void trellis_loop_lf(int scan_hi, int scan_lo, int plane, TX_SIZE tx_size,
 }
 
 void trellis_loop(int first_scan_pos, int scan_hi, int scan_lo, int plane,
-                  TX_SIZE tx_size, TX_TYPE tx_type, int32_t *tmp_sign,
+                  TX_SIZE tx_size, TX_CLASS tx_class, int32_t *tmp_sign,
                   int sharpness, tcq_levels_t *tcq_lev,
                   tcq_node_t trellis[MAX_TRELLIS][TOTALSTATES],
                   tran_low_t *qcoeff, const int64_t rdmult, const int16_t *scan,
@@ -1464,7 +1460,6 @@ void trellis_loop(int first_scan_pos, int scan_hi, int scan_lo, int plane,
   const int bwl = get_txb_bwl(tx_size);
   const int height = get_txb_high(tx_size);
   const int shift = av1_get_tx_scale(tx_size);
-  const TX_CLASS tx_class = tx_type_to_class[get_primary_tx_type(tx_type)];
   (void)qcoeff;
 
   for (int scan_pos = scan_hi; scan_pos >= scan_lo; scan_pos--) {
@@ -1580,8 +1575,8 @@ void trellis_loop(int first_scan_pos, int scan_hi, int scan_lo, int plane,
 // Pre-calculate eob bits (rate) for each EOB candidate position from 1
 // to the initial eob location. Store rate in array block_eob_rate[],
 // starting with index.
-void av1_calc_block_eob_rate_c(struct macroblock *x, int plane, TX_SIZE tx_size, int eob,
-                               uint16_t *block_eob_rate) {
+void av1_calc_block_eob_rate_c(struct macroblock *x, int plane, TX_SIZE tx_size,
+                               int eob, uint16_t *block_eob_rate) {
   const MACROBLOCKD *xd = &x->e_mbd;
   const MB_MODE_INFO *mbmi = xd->mi[0];
   const int is_inter = is_inter_block(mbmi, xd->tree_type);
@@ -1617,6 +1612,74 @@ void av1_calc_block_eob_rate_c(struct macroblock *x, int plane, TX_SIZE tx_size,
     }
     n_offset_bits++;
   }
+}
+
+int av1_find_best_path_c(const struct tcq_node_t *trellis, const int16_t *scan,
+                         const int32_t *dequant, const qm_val_t *iqmatrix,
+                         const tran_low_t *tcoeff, int first_scan_pos,
+                         int log_scale, tran_low_t *qcoeff, tran_low_t *dqcoeff,
+                         int *min_rate, int64_t *min_cost) {
+  // Select best trellis state.
+  int64_t min_path_cost = INT64_MAX;
+  int trel_min_rate = INT32_MAX;
+  int prev_id = -2;
+  for (int state = 0; state < TOTALSTATES; state++) {
+    const tcq_node_t *decision = &trellis[state];
+    if (decision->rdCost < min_path_cost) {
+      prev_id = state;
+      min_path_cost = decision->rdCost;
+      trel_min_rate = decision->rate;
+    }
+  }
+
+  // Backtrack to reconstruct qcoeff / dqcoeff blocks.
+  int scan_pos = 0;
+  if (!iqmatrix) {
+    int dqv = dequant[0];
+    int dqv_ac = dequant[1];
+    for (; prev_id >= 0; scan_pos++) {
+      const tcq_node_t *decision = &trellis[scan_pos * TOTALSTATES + prev_id];
+      prev_id = decision->prevId;
+      int abs_level = decision->absLevel;
+      int blk_pos = scan[scan_pos];
+      int sign = -(tcoeff[blk_pos] < 0);
+      int dq = prev_id >= 0 ? tcq_quant(prev_id) : 0;
+      int qc = (abs_level == 0) ? 0 : (2 * abs_level - dq);
+      int dqc = (tran_low_t)ROUND_POWER_OF_TWO_64((tran_high_t)qc * dqv,
+                                                  QUANT_TABLE_BITS) >>
+                log_scale;
+      qcoeff[blk_pos] = (abs_level ^ sign) - sign;
+      dqcoeff[blk_pos] = (dqc ^ sign) - sign;
+      dqv = dqv_ac;
+    }
+  } else {
+    for (; prev_id >= 0; scan_pos++) {
+      const tcq_node_t *decision = &trellis[scan_pos * TOTALSTATES + prev_id];
+      prev_id = decision->prevId;
+      int abs_level = decision->absLevel;
+      int blk_pos = scan[scan_pos];
+      int sign = tcoeff[blk_pos] < 0;
+      qcoeff[blk_pos] = sign ? -abs_level : abs_level;
+      int dqv = get_dqv(dequant, blk_pos, iqmatrix);
+      int dq = prev_id >= 0 ? tcq_quant(prev_id) : 0;
+      int qc = (abs_level == 0) ? 0 : (2 * abs_level - dq);
+      int dqc = (tran_low_t)ROUND_POWER_OF_TWO_64((tran_high_t)qc * dqv,
+                                                  QUANT_TABLE_BITS) >>
+                log_scale;
+      dqcoeff[blk_pos] = sign ? -dqc : dqc;
+    }
+  }
+  int eob = scan_pos;
+
+  for (; scan_pos <= first_scan_pos; scan_pos++) {
+    int blk_pos = scan[scan_pos];
+    qcoeff[blk_pos] = 0;
+    dqcoeff[blk_pos] = 0;
+  }
+
+  *min_rate = trel_min_rate;
+  *min_cost = min_path_cost;
+  return eob;
 }
 
 int av1_dep_quant(const struct AV1_COMP *cpi, MACROBLOCK *x, int plane,
@@ -1729,12 +1792,12 @@ int av1_dep_quant(const struct AV1_COMP *cpi, MACROBLOCK *x, int plane,
                               block_eob_rate, txb_ctx, txb_costs);
         scan_hi = scan_lo - 1;
       }
-      trellis_loop_lf(scan_hi, 0, plane, tx_size, tx_type, xd->tmp_sign,
+      trellis_loop_lf(scan_hi, 0, plane, tx_size, tx_class, xd->tmp_sign,
                       sharpness, &tcq_lev, trellis, qcoeff, rdmult, scan,
                       tcoeff, dequant, quant, iqmatrix, block_eob_rate, txb_ctx,
                       txb_costs);
     } else {
-      trellis_loop(first_scan_pos, scan_hi, 0, plane, tx_size, tx_type,
+      trellis_loop(first_scan_pos, scan_hi, 0, plane, tx_size, tx_class,
                    xd->tmp_sign, sharpness, &tcq_lev, trellis, qcoeff, rdmult,
                    scan, tcoeff, dequant, quant, iqmatrix, block_eob_rate,
                    txb_ctx, txb_costs);
@@ -1744,42 +1807,12 @@ int av1_dep_quant(const struct AV1_COMP *cpi, MACROBLOCK *x, int plane,
   free(mem_tcq);
 
   // find best path
-  int64_t min_path_cost = INT64_MAX;
   int min_rate = INT32_MAX;
-  tcq_node_t decision;
-  decision.prevId = -2;
-  for (int state = 0; state < TOTALSTATES; state++) {
-    if (trellis[0][state].rdCost < min_path_cost) {
-      decision.prevId = state;
-      min_path_cost = trellis[0][state].rdCost;
-      min_rate = trellis[0][state].rate;
-    }
-  }
-  // backward scannig  dqc,tqc,qc,level
-  int scan_pos = 0;
-  // printf("quantization... \n");
-  for (; decision.prevId >= 0; scan_pos++) {
-    decision = trellis[scan_pos][decision.prevId];
-    // printf("%d ", decision.absLevel);
-    int blk_pos = scan[scan_pos];
-    qcoeff[blk_pos] =
-        (tcoeff[blk_pos] < 0 ? -decision.absLevel : decision.absLevel);
-    int dqv = get_dqv(dequant, blk_pos, iqmatrix);
-    int log_scale = av1_get_tx_scale(tx_size) + 1;
-    int dq = decision.prevId >= 0 ? tcq_quant(decision.prevId) : 0;
-    int qc = decision.absLevel == 0 ? 0 : (2 * decision.absLevel - dq);
-    int dqc = (tran_low_t)ROUND_POWER_OF_TWO_64((tran_high_t)qc * dqv,
-                                                QUANT_TABLE_BITS) >>
-              log_scale;
-    dqcoeff[blk_pos] = (tcoeff[blk_pos] < 0 ? -dqc : dqc);
-  }
-
-  eob = scan_pos;
-  for (; scan_pos <= first_scan_pos; scan_pos++) {
-    int blk_pos = scan[scan_pos];
-    qcoeff[blk_pos] = 0;
-    dqcoeff[blk_pos] = 0;
-  }
+  int64_t min_path_cost = INT64_MAX;
+  int log_scale = av1_get_tx_scale(tx_size) + 1;
+  eob = av1_find_best_path(&trellis[0][0], scan, dequant, iqmatrix, tcoeff,
+                           first_scan_pos, log_scale, qcoeff, dqcoeff,
+                           &min_rate, &min_path_cost);
 
 #if CONFIG_CONTEXT_DERIVATION
   int txb_skip_ctx = txb_ctx->txb_skip_ctx;
