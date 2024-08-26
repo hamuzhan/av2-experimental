@@ -7044,10 +7044,12 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
 #endif  // CONFIG_EXTENDED_WARP_PREDICTION
 
     mbmi->motion_mode = SIMPLE_TRANSLATION;
+    const int num_planes_to_build =
+        (xd->tree_type == SHARED_PART) ? av1_num_planes(cm) : 1;
 
 #if !CONFIG_MORPH_PRED
     av1_enc_build_inter_predictor(cm, xd, mi_row, mi_col, NULL, bsize, 0,
-                                  av1_num_planes(cm) - 1);
+                                  num_planes_to_build - 1);
 #endif  // CONFIG_MORPH_PRED
 
     const IntraBCMvCosts *const dv_costs = &x->dv_costs;
@@ -7124,7 +7126,7 @@ static int64_t rd_pick_intrabc_mode_sb(const AV1_COMP *cpi, MACROBLOCK *x,
       if (morph_idx == 0) {
         // Build intra bc predictor for yuv planes as baseline.
         av1_enc_build_inter_predictor(cm, xd, mi_row, mi_col, NULL, bsize, 0,
-                                      av1_num_planes(cm) - 1);
+                                      num_planes_to_build - 1);
       } else {
         // Build the y predictor using a linear model.
         const bool valid = av1_build_morph_pred(cm, xd, bsize, mi_row, mi_col);
