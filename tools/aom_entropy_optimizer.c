@@ -92,9 +92,12 @@ static int parse_counts_for_cdf_opt(aom_count_type **ct_ptr,
       static int n = 0;
       double fr[20] = {};
       int pp = par[total_modes + 1];
-      if (!(n & 1)) {
+      if (1 || !(n & 1)) {
         for (int i = 0; i < total_modes; i++) p0[i] = cdfs[i];
-        fprintf(probsfile, "), %d /* n %ld */ ", pp, cdf_sum);
+        fprintf(probsfile, "), %d /* n %ld cnt[ ", pp, cdf_sum);
+        for (int i = 0; i < total_modes; i++)
+          fprintf(probsfile, "%d ", counts1d[i]);
+        fprintf(probsfile, "*/ ");
       } else {
         for (int i = 0; i < total_modes; i++) fr[i] = (double)cdfs[i] / p0[i];
         fprintf(probsfile, "), %d /* n %ld fr[ ", pp, cdf_sum);
