@@ -377,6 +377,9 @@ void av1_init_seq_coding_tools(SequenceHeader *seq, AV1_COMMON *cm,
     seq->force_screen_content_tools = 2;
     seq->force_integer_mv = 2;
   }
+#if CONFIG_DQ
+  seq->enable_tcq = tool_cfg->enable_tcq;
+#endif
   seq->order_hint_info.order_hint_bits_minus_1 =
       seq->order_hint_info.enable_order_hint
           ? DEFAULT_EXPLICIT_ORDER_HINT_BITS - 1
@@ -4109,6 +4112,15 @@ static int encode_frame_to_data_rate(AV1_COMP *cpi, size_t *size,
     aom_invalidate_pyramid(cpi->source->y_pyramid);
     av1_invalidate_corner_list(cpi->source->corners);
   }
+
+#if CONFIG_DQ
+  if (cm->seq_params.enable_tcq >= TCQ_4ST_FR) {
+    int use_tcq = frame_is_intra_only(cm);
+    features->tcq_mode = use_tcq ? cm->seq_params.enable_tcq - 2 : 0;
+  } else {
+    features->tcq_mode = cm->seq_params.enable_tcq;
+  }
+#endif
 
   int largest_tile_id = 0;
   if (av1_superres_in_recode_allowed(cpi)) {

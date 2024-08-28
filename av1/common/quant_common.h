@@ -24,13 +24,16 @@ extern "C" {
 #endif
 
 #if CONFIG_DQ
-#define DQENABLE 0    // Determine whether to use DQ by dq_enable()
-#define NEWQINDEX 1   // QP shift
-#define MORESTATES 0  // 1: 8-state; 0: 4-state
-#define NEWHR 1       // 1:parity is determined by (base + LR)
+#define TCQ_HDR_FLAG 1  // Enable through header flag(s)
+#define DQENABLE 0      // Determine whether to use DQ by dq_enable()
+#define NEWQINDEX 1     // QP shift
+#define MORESTATES 0    // 1: 8-state; 0: 4-state
+#define NEWHR 1         // 1:parity is determined by (base + LR)
 #else
-#define DQENABLE 0   // Determine whether to use DQ by dq_enable()
-#define NEWQINDEX 0  // QP shift
+#define TCQ_HDR_FLAG 0
+#define DQENABLE 0    // Determine whether to use DQ by dq_enable()
+#define NEWQINDEX 0   // QP shift
+#define MORESTATES 0  // 1: 8-state; 0: 4-state
 #define NEWHR 0
 #endif
 #if MORESTATES
@@ -67,22 +70,70 @@ struct CommonQuantParams;
 struct macroblockd;
 
 #if CONFIG_DQ
+// TCQ modes: 4/8 state, frame adaptivity
+enum {
+  TCQ_DISABLE = 0,
+  TCQ_4ST = 1,
+  TCQ_8ST = 2,
+  TCQ_4ST_FR = 3,
+  TCQ_8ST_FR = 4
+};
+
 static INLINE bool tcq_quant(const int state) {
   // 8-states: A0: state 0/1/4/5, A1: state 2/3/6/7
   // 4-states: A0: state 0/1, A1: state 2/3
   return state & 2;
 }
 
-int tcq_parity(int absLevel, int limits);
-int tcq_next_state(const int curState, const int absLevel, const int limits);
+#define DQMIN 0
+#define DQMAX 1024
+static INLINE bool dq_enable(int enable_tcq, TX_SIZE tx_size, int plane) {
+  int dq_en = enable_tcq != 0;
 #if DQENABLE
-bool dq_enable(const TX_SIZE tx_size, int plane);
+  int width = get_txb_wide(tx_size);
+  int height = get_txb_high(tx_size);
+  dq_en &= ((width * height <= DQMAX) &&
+            (width * height >= DQMIN));  // try other constraints?
+#else
+  (void)tx_size;
+  (void)plane;
 #endif
+  return dq_en;
+}
+
+int tcq_parity(int absLevel, int limits);
+int tcq_init_state(int tcq_mode);
+int tcq_next_state(const int curState, const int absLevel, const int limits);
 #endif
 
 int32_t av1_dc_quant_QTX(int qindex, int delta, int base_dc_delta_q,
                          aom_bit_depth_t bit_depth);
 int32_t av1_ac_quant_QTX(int qindex, int delta, aom_bit_depth_t bit_depth);
+
+#if CONFIG_DQ
+static INLINE int32_t av1_dc_quant_QTX_tcq(int qindex, int delta,
+                                           int base_dc_delta_q,
+                                           aom_bit_depth_t bit_depth,
+                                           int use_tcq_offset) {
+  if (use_tcq_offset && qindex != 0) {
+#if NEWQINDEX
+    qindex += 2;
+#endif
+  }
+  return av1_dc_quant_QTX(qindex, delta, base_dc_delta_q, bit_depth);
+}
+
+static INLINE int32_t av1_ac_quant_QTX_tcq(int qindex, int delta,
+                                           aom_bit_depth_t bit_depth,
+                                           int use_tcq_offset) {
+  if (use_tcq_offset && qindex != 0) {
+#if NEWQINDEX
+    qindex += 2;
+#endif
+  }
+  return av1_ac_quant_QTX(qindex, delta, bit_depth);
+}
+#endif
 
 int av1_get_qindex(const struct segmentation *seg, int segment_id,
                    int base_qindex, aom_bit_depth_t bit_depth);

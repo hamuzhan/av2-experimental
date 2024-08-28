@@ -62,7 +62,7 @@ extern "C" {
 #define LEVEL_CONTEXTS_UV 4      // low range contexts
 #endif                           // CONFIG_LCCHROMA
 
-#if CONFIG_LCCHROMA && CONFIG_DQ
+#if CONFIG_DQ
 #define DQ_CTXS 2
 #endif
 

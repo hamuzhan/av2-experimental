@@ -279,6 +279,9 @@ const arg_def_t *global_args[] = {
   &g_av1_codec_arg_defs.large_scale_tile,
   &g_av1_codec_arg_defs.monochrome,
   &g_av1_codec_arg_defs.full_still_picture_hdr,
+#if CONFIG_DQ
+  &g_av1_codec_arg_defs.enable_tcq,
+#endif
   &g_av1_codec_arg_defs.save_as_annexb,
   NULL
 };
@@ -744,7 +747,7 @@ static void init_config(cfg_options_t *config) {
   config->enable_interintra_wedge = 1;
   config->enable_paeth_intra = 1;
   config->enable_trellis_quant = 3;
-#if CONFIG_DQ && 0
+#if CONFIG_DQ
   config->enable_trellis_quant = 1;
 #endif
   config->enable_ref_frame_mvs = 1;
@@ -1218,6 +1221,10 @@ static int parse_stream_params(struct AvxEncoderConfig *global,
     } else if (arg_match(&arg, &g_av1_codec_arg_defs.full_still_picture_hdr,
                          argi)) {
       config->cfg.full_still_picture_hdr = 1;
+#if CONFIG_DQ
+    } else if (arg_match(&arg, &g_av1_codec_arg_defs.enable_tcq, argi)) {
+      config->cfg.enable_tcq = arg_parse_uint(&arg);
+#endif
     } else if (arg_match(&arg, &g_av1_codec_arg_defs.frame_hash_metadata,
                          argi)) {
       config->cfg.frame_hash_metadata = arg_parse_enum_or_int(&arg);

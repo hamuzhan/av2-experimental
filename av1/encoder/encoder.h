@@ -901,6 +901,9 @@ typedef struct {
   // When enabled, the encoder will use a full header even for still pictures.
   // When disabled, a reduced header is used for still pictures.
   bool full_still_picture_hdr;
+#if CONFIG_DQ
+  int enable_tcq;
+#endif
   // Indicates if frame order hint should be enabled or not.
   bool enable_order_hint;
   // Indicates if ref_frame_mvs should be enabled at the sequence level.

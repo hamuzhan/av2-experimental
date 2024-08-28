@@ -451,7 +451,9 @@ static int parse_sequence_header(const uint8_t *const buffer, size_t length,
         AV1C_READ_BIT_OR_RETURN_ERROR(seq_force_integer_mv);
       }
     }
-
+#if CONFIG_DQ
+    AV1C_READ_BIT_OR_RETURN_ERROR(seq_enable_tcq);
+#endif
     if (enable_order_hint) {
       AV1C_READ_BITS_OR_RETURN_ERROR(order_hint_bits_minus_1, 3);
     }

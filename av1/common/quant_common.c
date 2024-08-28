@@ -100,49 +100,42 @@ int tcq_parity(int absLevel, int limits) {
   return par;
 }
 
+int tcq_init_state(int tcq_mode) { return tcq_mode << 8; }
+
 int tcq_next_state(const int curState, const int absLevel, const int limits) {
+  int tcq_mode = curState >> 8;
+  int state = curState & 255;
   int nextState = 0;
-#if MORESTATES
-  switch (curState) {
-    case 0: nextState = !(tcq_parity(absLevel, limits)) ? 0 : 4; break;
-    case 1: nextState = !(tcq_parity(absLevel, limits)) ? 4 : 0; break;
-    case 2: nextState = !(tcq_parity(absLevel, limits)) ? 1 : 5; break;
-    case 3: nextState = !(tcq_parity(absLevel, limits)) ? 5 : 1; break;
-    case 4: nextState = !(tcq_parity(absLevel, limits)) ? 6 : 2; break;
-    case 5: nextState = !(tcq_parity(absLevel, limits)) ? 2 : 6; break;
-    case 6: nextState = !(tcq_parity(absLevel, limits)) ? 7 : 3; break;
-    case 7: nextState = !(tcq_parity(absLevel, limits)) ? 3 : 7; break;
-    default: nextState = !(tcq_parity(absLevel, limits)) ? 0 : 4; break;
+  if (tcq_mode == TCQ_8ST) {
+    switch (state) {
+      case 0: nextState = !(tcq_parity(absLevel, limits)) ? 0 : 4; break;
+      case 1: nextState = !(tcq_parity(absLevel, limits)) ? 4 : 0; break;
+      case 2: nextState = !(tcq_parity(absLevel, limits)) ? 1 : 5; break;
+      case 3: nextState = !(tcq_parity(absLevel, limits)) ? 5 : 1; break;
+      case 4: nextState = !(tcq_parity(absLevel, limits)) ? 6 : 2; break;
+      case 5: nextState = !(tcq_parity(absLevel, limits)) ? 2 : 6; break;
+      case 6: nextState = !(tcq_parity(absLevel, limits)) ? 7 : 3; break;
+      case 7: nextState = !(tcq_parity(absLevel, limits)) ? 3 : 7; break;
+      default: nextState = !(tcq_parity(absLevel, limits)) ? 0 : 4; break;
+    }
+  } else if (tcq_mode == TCQ_4ST) {
+    switch (state) {
+      case 0: nextState = !(tcq_parity(absLevel, limits)) ? 0 : 2; break;
+      case 1: nextState = !(tcq_parity(absLevel, limits)) ? 2 : 0; break;
+      case 2: nextState = !(tcq_parity(absLevel, limits)) ? 1 : 3; break;
+      case 3: nextState = !(tcq_parity(absLevel, limits)) ? 3 : 1; break;
+      default: nextState = !(tcq_parity(absLevel, limits)) ? 0 : 2; break;
+    }
+  } else {  // TCQ_DISABLE
+    nextState = 0;
   }
-#else
-  switch (curState) {
-    case 0: nextState = !(tcq_parity(absLevel, limits)) ? 0 : 2; break;
-    case 1: nextState = !(tcq_parity(absLevel, limits)) ? 2 : 0; break;
-    case 2: nextState = !(tcq_parity(absLevel, limits)) ? 1 : 3; break;
-    case 3: nextState = !(tcq_parity(absLevel, limits)) ? 3 : 1; break;
-    default: nextState = !(tcq_parity(absLevel, limits)) ? 0 : 2; break;
-  }
-#endif
+  nextState += (tcq_mode << 8);
   return nextState;
 }
-
-#if DQENABLE
-#define DQMIN 0
-#define DQMAX 1024
-bool dq_enable(TX_SIZE tx_size, int plane) {
-  int width = get_txb_wide(tx_size);
-  int height = get_txb_high(tx_size);
-  return ((width * height <= DQMAX) &&
-          (width * height >= DQMIN));  // try other constraints?
-}
-#endif
 #endif
 
 int32_t av1_dc_quant_QTX(int qindex, int delta, int base_dc_delta_q,
                          aom_bit_depth_t bit_depth) {
-#if NEWQINDEX
-  if (qindex != 0) qindex += 2;
-#endif
   int q_clamped;
   if ((qindex == 0) && (delta + base_dc_delta_q <= 0))
     q_clamped = 0;
@@ -203,9 +196,6 @@ int32_t av1_dc_quant_QTX(int qindex, int delta, int base_dc_delta_q,
 }
 
 int32_t av1_ac_quant_QTX(int qindex, int delta, aom_bit_depth_t bit_depth) {
-#if NEWQINDEX
-  if (qindex != 0) qindex += 2;
-#endif
   int q_clamped;
   if ((qindex == 0) && (delta <= 0))
     q_clamped = 0;

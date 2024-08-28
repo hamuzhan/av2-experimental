@@ -207,10 +207,8 @@ int av1_optimize_b(const struct AV1_COMP *cpi, MACROBLOCK *x, int plane,
     return eob;
   }
 #if CONFIG_DQ
-#if DQENABLE
-  if (dq_enable(tx_size, plane))
-#endif  // DQENABLE
-  {
+  int use_dq = dq_enable(cpi->common.features.tcq_mode, tx_size, plane);
+  if (use_dq) {
     return av1_dep_quant(cpi, x, plane, block, tx_size, tx_type, cctx_type,
                          txb_ctx, rate_cost, cpi->oxcf.algo_cfg.sharpness
 #if CONFIG_TXFMBLK_LOGS || CONFIG_COEFF_LOGS
@@ -218,10 +216,7 @@ int av1_optimize_b(const struct AV1_COMP *cpi, MACROBLOCK *x, int plane,
                          blk_row, blk_col, bsize, dry_run
 #endif  // CONFIG_TXFMBLK_LOGS || CONFIG_COEFF_LOGS
     );
-  }
-#if DQENABLE
-  else
-#endif  // DQENABLE
+  } else
 #endif  // #if CONFIG_DQ
     return av1_optimize_txb_new(cpi, x, plane, block, tx_size, tx_type,
                                 cctx_type, txb_ctx, rate_cost,
@@ -828,10 +823,8 @@ static void encode_block(int plane, int block, int blk_row, int blk_col,
     OPT_TYPE INTER_BLOCK_OPT_TYPE = TRELLIS_DROPOUT_OPT;
 
 #if CONFIG_DQ
-#if DQENABLE
-    if (dq_enable(tx_size, plane))
-#endif
-    {
+    int use_dq = dq_enable(cm->features.tcq_mode, tx_size, plane);
+    if (use_dq) {
       // Dropout setting should be disabled when Dependent quantization is
       // enabled.
       // Blocks of inter frames. (NOTE: Dropout optimization is DISABLED by
@@ -1491,10 +1484,8 @@ void av1_encode_block_intra(int plane, int block, int blk_row, int blk_col,
     OPT_TYPE INTRA_BLOCK_OPT_TYPE = TRELLIS_DROPOUT_OPT;
 
 #if CONFIG_DQ
-#if DQENABLE
-    if (dq_enable(tx_size, plane))
-#endif
-    {
+    int use_dq = dq_enable(cm->features.tcq_mode, tx_size, plane);
+    if (use_dq) {
       // Dropout setting should be disabled when Dependent quantization is
       // enabled.
       KEY_BLOCK_OPT_TYPE = TRELLIS_OPT;
@@ -1820,10 +1811,8 @@ void av1_encode_block_intra_joint_uv(int block, int blk_row, int blk_col,
   OPT_TYPE INTRA_BLOCK_OPT_TYPE = TRELLIS_DROPOUT_OPT;
 
 #if CONFIG_DQ
-#if DQENABLE
-  if (dq_enable(tx_size, AOM_PLANE_U))
-#endif
-  {
+  int use_dq = cm->features.tcq_mode != 0;
+  if (use_dq) {
     // Dropout setting should be disabled when Dependent quantization is
     // enabled.
     KEY_BLOCK_OPT_TYPE = TRELLIS_OPT;

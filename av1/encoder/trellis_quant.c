@@ -82,28 +82,6 @@ static AOM_INLINE void set_levels_buf(int prevId, int absLevel, uint8_t *levels,
   }
 }
 
-static INLINE int get_low_range(int abs_qc, int lf) {
-  int base_levels = lf ? 6 : 4;
-  int parity = abs_qc & 1;
-#if ((COEFF_BASE_RANGE & 1) == 1)
-  int br_max = COEFF_BASE_RANGE + base_levels - 1 - parity;
-  int low = AOMMIN(abs_qc, br_max);
-  low -= base_levels - 1;
-#else
-  int abs2 = abs_qc & ~1;
-  int low = AOMMIN(abs2, COEFF_BASE_RANGE + base_levels - 2) + parity;
-  low -= base_levels - 1;
-#endif
-  return low;
-}
-
-static INLINE int get_high_range(int abs_qc, int lf) {
-  int base_levels = lf ? 6 : 4;
-  int low_range = get_low_range(abs_qc, lf);
-  int high_range = (abs_qc - low_range - (base_levels - 1)) >> 1;
-  return high_range;
-}
-
 static AOM_FORCE_INLINE int get_dqv(const int32_t *dequant, int coeff_idx,
                                     const qm_val_t *iqmatrix) {
   int dqv = dequant[!!coeff_idx];
@@ -256,65 +234,6 @@ static int get_tx_type_cost(const MACROBLOCK *x, const MACROBLOCKD *xd,
   return 0;
 }
 
-static AOM_FORCE_INLINE int get_golomb_cost(int abs_qc) {
-#if NEWHR
-  const int r = 1 + get_high_range(abs_qc, 0);
-  const int length = get_msb(r) + 1;
-  return av1_cost_literal(2 * length - 1);
-#else
-  if (abs_qc >= 1 + NUM_BASE_LEVELS + COEFF_BASE_RANGE) {
-    const int r = abs_qc - COEFF_BASE_RANGE - NUM_BASE_LEVELS;
-    const int length = get_msb(r) + 1;
-    return av1_cost_literal(2 * length - 1);
-  }
-  return 0;
-#endif  // NEWHR
-}
-
-// Golomb cost of coding bypass coded level values in the
-// low-frequency region.
-static AOM_FORCE_INLINE int get_golomb_cost_lf(int abs_qc) {
-#if NEWHR
-  const int r = 1 + get_high_range(abs_qc, 1);
-  const int length = get_msb(r) + 1;
-  return av1_cost_literal(2 * length - 1);
-#else
-  if (abs_qc >= 1 + LF_NUM_BASE_LEVELS + COEFF_BASE_RANGE) {
-    const int r = abs_qc - COEFF_BASE_RANGE - LF_NUM_BASE_LEVELS;
-    const int length = get_msb(r) + 1;
-    return av1_cost_literal(2 * length - 1);
-  }
-  return 0;
-#endif  // NEWHR
-}
-
-// Base range cost of coding level values in the
-// low-frequency region, includes the bypass cost.
-static AOM_FORCE_INLINE int get_br_lf_cost(tran_low_t level,
-                                           const int *coeff_lps) {
-#if NEWHR
-  const int base_range = get_low_range(level, 1);
-  if (base_range < COEFF_BASE_RANGE - 1) return coeff_lps[base_range];
-  return coeff_lps[base_range] + get_golomb_cost_lf(level);
-#else
-  const int base_range =
-      AOMMIN(level - 1 - LF_NUM_BASE_LEVELS, COEFF_BASE_RANGE);
-  return coeff_lps[base_range] + get_golomb_cost_lf(level);
-#endif  // NEWHR
-}
-
-static AOM_FORCE_INLINE int get_br_cost(tran_low_t level,
-                                        const int *coeff_lps) {
-#if NEWHR
-  const int base_range = get_low_range(level, 0);
-  if (base_range < COEFF_BASE_RANGE - 1) return coeff_lps[base_range];
-  return coeff_lps[base_range] + get_golomb_cost(level);
-#else
-  const int base_range = AOMMIN(level - 1 - NUM_BASE_LEVELS, COEFF_BASE_RANGE);
-  return coeff_lps[base_range] + get_golomb_cost(level);
-#endif  // NEWHR
-}
-
 static INLINE int get_coeff_cost_eob(int ci, tran_low_t abs_qc, int sign,
                                      int coeff_ctx, int dc_sign_ctx,
                                      const LV_MAP_COEFF_COST *txb_costs,
@@ -390,24 +309,24 @@ static INLINE int get_coeff_cost_eob(int ci, tran_low_t abs_qc, int sign,
       if (limits) {
         if (abs_qc > LF_NUM_BASE_LEVELS) {
           int br_ctx = get_br_ctx_lf_eob_chroma(ci, tx_class);
-          cost += get_br_lf_cost(abs_qc, txb_costs->lps_lf_cost_uv[br_ctx]);
+          cost += get_br_lf_cost_tcq(abs_qc, txb_costs->lps_lf_cost_uv[br_ctx]);
         }
       } else {
         if (abs_qc > NUM_BASE_LEVELS) {
           int br_ctx = 0; /* get_br_ctx_eob_chroma */
-          cost += get_br_cost(abs_qc, txb_costs->lps_cost_uv[br_ctx]);
+          cost += get_br_cost_tcq(abs_qc, txb_costs->lps_cost_uv[br_ctx]);
         }
       }
     } else {
       if (limits) {
         if (abs_qc > LF_NUM_BASE_LEVELS) {
           int br_ctx = get_br_ctx_lf_eob(ci, tx_class);
-          cost += get_br_lf_cost(abs_qc, txb_costs->lps_lf_cost[br_ctx]);
+          cost += get_br_lf_cost_tcq(abs_qc, txb_costs->lps_lf_cost[br_ctx]);
         }
       } else {
         if (abs_qc > NUM_BASE_LEVELS) {
           int br_ctx = 0; /* get_br_ctx_eob */
-          cost += get_br_cost(abs_qc, txb_costs->lps_cost[br_ctx]);
+          cost += get_br_cost_tcq(abs_qc, txb_costs->lps_cost[br_ctx]);
         }
       }
     }
@@ -415,12 +334,12 @@ static INLINE int get_coeff_cost_eob(int ci, tran_low_t abs_qc, int sign,
     if (limits) {
       if (abs_qc > LF_NUM_BASE_LEVELS) {
         int br_ctx = get_br_ctx_lf_eob(ci, tx_class);
-        cost += get_br_lf_cost(abs_qc, txb_costs->lps_lf_cost[br_ctx]);
+        cost += get_br_lf_cost_tcq(abs_qc, txb_costs->lps_lf_cost[br_ctx]);
       }
     } else {
       if (abs_qc > NUM_BASE_LEVELS) {
         int br_ctx = 0; /* get_br_ctx_eob */
-        cost += get_br_cost(abs_qc, txb_costs->lps_cost[br_ctx]);
+        cost += get_br_cost_tcq(abs_qc, txb_costs->lps_cost[br_ctx]);
       }
     }
 #endif  // CONFIG_LCCHROMA
@@ -445,9 +364,9 @@ static INLINE int get_coeff_cost_def(tran_low_t abs_qc, int coeff_ctx,
       cost += av1_cost_literal(1);
     if (abs_qc > NUM_BASE_LEVELS) {
       if (plane == 0) {
-        cost += get_br_cost(abs_qc, txb_costs->lps_cost[mid_ctx]);
+        cost += get_br_cost_tcq(abs_qc, txb_costs->lps_cost[mid_ctx]);
       } else {
-        cost += get_br_cost(abs_qc, txb_costs->lps_cost_uv[mid_ctx]);
+        cost += get_br_cost_tcq(abs_qc, txb_costs->lps_cost_uv[mid_ctx]);
       }
     }
   }
@@ -488,21 +407,22 @@ static INLINE int get_coeff_cost_general(
     if (plane > 0) {
       if (limits) {
         if (abs_qc > LF_NUM_BASE_LEVELS) {
-          cost += get_br_lf_cost(abs_qc, txb_costs->lps_lf_cost_uv[mid_ctx]);
+          cost +=
+              get_br_lf_cost_tcq(abs_qc, txb_costs->lps_lf_cost_uv[mid_ctx]);
         }
       } else {
         if (abs_qc > NUM_BASE_LEVELS) {
-          cost += get_br_cost(abs_qc, txb_costs->lps_cost_uv[mid_ctx]);
+          cost += get_br_cost_tcq(abs_qc, txb_costs->lps_cost_uv[mid_ctx]);
         }
       }
     } else {
       if (limits) {
         if (abs_qc > LF_NUM_BASE_LEVELS) {
-          cost += get_br_lf_cost(abs_qc, txb_costs->lps_lf_cost[mid_ctx]);
+          cost += get_br_lf_cost_tcq(abs_qc, txb_costs->lps_lf_cost[mid_ctx]);
         }
       } else {
         if (abs_qc > NUM_BASE_LEVELS) {
-          cost += get_br_cost(abs_qc, txb_costs->lps_cost[mid_ctx]);
+          cost += get_br_cost_tcq(abs_qc, txb_costs->lps_cost[mid_ctx]);
         }
       }
     }
@@ -620,7 +540,7 @@ static INLINE int get_coeff_cost_general(int ci, tran_low_t abs_qc, int sign,
             br_ctx = get_br_ctx_lf_eob_chroma(ci, tx_class);
           else
             br_ctx = mid_ctx;
-          cost += get_br_lf_cost(abs_qc, txb_costs->lps_lf_cost_uv[br_ctx]);
+          cost += get_br_lf_cost_tcq(abs_qc, txb_costs->lps_lf_cost_uv[br_ctx]);
         }
       } else {
         if (abs_qc > NUM_BASE_LEVELS) {
@@ -629,7 +549,7 @@ static INLINE int get_coeff_cost_general(int ci, tran_low_t abs_qc, int sign,
             br_ctx = 0; /* get_br_ctx_eob_chroma */
           else
             br_ctx = mid_ctx;
-          cost += get_br_cost(abs_qc, txb_costs->lps_cost_uv[br_ctx]);
+          cost += get_br_cost_tcq(abs_qc, txb_costs->lps_cost_uv[br_ctx]);
         }
       }
     } else {
@@ -640,7 +560,7 @@ static INLINE int get_coeff_cost_general(int ci, tran_low_t abs_qc, int sign,
             br_ctx = get_br_ctx_lf_eob(ci, tx_class);
           else
             br_ctx = mid_ctx;
-          cost += get_br_lf_cost(abs_qc, txb_costs->lps_lf_cost[br_ctx]);
+          cost += get_br_lf_cost_tcq(abs_qc, txb_costs->lps_lf_cost[br_ctx]);
         }
       } else {
         if (abs_qc > NUM_BASE_LEVELS) {
@@ -649,7 +569,7 @@ static INLINE int get_coeff_cost_general(int ci, tran_low_t abs_qc, int sign,
             br_ctx = 0; /* get_br_ctx_eob */
           else
             br_ctx = mid_ctx;
-          cost += get_br_cost(abs_qc, txb_costs->lps_cost[br_ctx]);
+          cost += get_br_cost_tcq(abs_qc, txb_costs->lps_cost[br_ctx]);
         }
       }
     }
@@ -661,7 +581,7 @@ static INLINE int get_coeff_cost_general(int ci, tran_low_t abs_qc, int sign,
           br_ctx = get_br_ctx_lf_eob(ci, tx_class);
         else
           br_ctx = get_br_lf_ctx(levels, ci, bwl, tx_class);
-        cost += get_br_lf_cost(abs_qc, txb_costs->lps_lf_cost[br_ctx]);
+        cost += get_br_lf_cost_tcq(abs_qc, txb_costs->lps_lf_cost[br_ctx]);
       }
     } else {
       if (abs_qc > NUM_BASE_LEVELS) {
@@ -670,7 +590,7 @@ static INLINE int get_coeff_cost_general(int ci, tran_low_t abs_qc, int sign,
           br_ctx = 0; /* get_br_ctx_eob */
         else
           br_ctx = get_br_ctx(levels, ci, bwl, tx_class);
-        cost += get_br_cost(abs_qc, txb_costs->lps_cost[br_ctx]);
+        cost += get_br_cost_tcq(abs_qc, txb_costs->lps_cost[br_ctx]);
       }
     }
 #endif  // CONFIG_LCCHROMA
@@ -983,7 +903,7 @@ void trellis_first_pos(int scan_pos, int plane, TX_SIZE tx_size,
                        TX_CLASS tx_class, int32_t *tmp_sign, int sharpness,
                        tcq_levels_t *tcq_lev,
                        tcq_node_t trellis[MAX_TRELLIS][TOTALSTATES],
-                       tran_low_t *qcoeff, const int64_t rdmult,
+                       tran_low_t *qcoeff, const int64_t rdmult, int log_scale,
                        const int16_t *scan, const tran_low_t *tcoeff,
                        const int32_t *dequant, const int32_t *quant,
                        const qm_val_t *iqmatrix, const uint16_t *block_eob_rate,
@@ -991,14 +911,13 @@ void trellis_first_pos(int scan_pos, int plane, TX_SIZE tx_size,
                        const LV_MAP_COEFF_COST *txb_costs) {
   const int bwl = get_txb_bwl(tx_size);
   const int height = get_txb_high(tx_size);
-  const int shift = av1_get_tx_scale(tx_size);
 
   int blk_pos = scan[scan_pos];
   tcq_node_t *decision = trellis[scan_pos];
 
   prequant_t pqData;
   int tempdqv = get_dqv(dequant, scan[scan_pos], iqmatrix);
-  av1_pre_quant(tcoeff[blk_pos], &pqData, quant, tempdqv, shift + 1, scan_pos);
+  av1_pre_quant(tcoeff[blk_pos], &pqData, quant, tempdqv, log_scale, scan_pos);
 
   // init state
   init_tcq_decision(decision);
@@ -1247,13 +1166,12 @@ void trellis_loop_diagonal(
     int32_t *tmp_sign, int sharpness, tcq_levels_t *tcq_lev,
     tcq_ctx_t tcq_ctx[TOTALSTATES],
     tcq_node_t trellis[MAX_TRELLIS][TOTALSTATES], tran_low_t *qcoeff,
-    const int64_t rdmult, const int16_t *scan, const tran_low_t *tcoeff,
-    const int32_t *dequant, const int32_t *quant, const qm_val_t *iqmatrix,
-    const uint16_t *block_eob_rate, const TXB_CTX *const txb_ctx,
-    const LV_MAP_COEFF_COST *txb_costs) {
+    const int64_t rdmult, int log_scale, const int16_t *scan,
+    const tran_low_t *tcoeff, const int32_t *dequant, const int32_t *quant,
+    const qm_val_t *iqmatrix, const uint16_t *block_eob_rate,
+    const TXB_CTX *const txb_ctx, const LV_MAP_COEFF_COST *txb_costs) {
   const int bwl = get_txb_bwl(tx_size);
   const int height = get_txb_high(tx_size);
-  const int shift = av1_get_tx_scale(tx_size);
   const int pos0 = scan[scan_hi];
   const int diag_ctx = get_nz_map_ctx_from_stats(0, pos0, bwl, TX_CLASS_2D, 0);
   assert(plane == 0);
@@ -1284,7 +1202,7 @@ void trellis_loop_diagonal(
 
     prequant_t pqData;
     int tempdqv = get_dqv(dequant, scan[scan_pos], iqmatrix);
-    av1_pre_quant(tcoeff[blk_pos], &pqData, quant, tempdqv, shift + 1,
+    av1_pre_quant(tcoeff[blk_pos], &pqData, quant, tempdqv, log_scale,
                   scan_pos);
 
     // init state
@@ -1399,7 +1317,7 @@ void trellis_loop_lf(int scan_hi, int scan_lo, int plane, TX_SIZE tx_size,
                      TX_CLASS tx_class, int32_t *tmp_sign, int sharpness,
                      tcq_levels_t *tcq_lev,
                      tcq_node_t trellis[MAX_TRELLIS][TOTALSTATES],
-                     tran_low_t *qcoeff, const int64_t rdmult,
+                     tran_low_t *qcoeff, const int64_t rdmult, int log_scale,
                      const int16_t *scan, const tran_low_t *tcoeff,
                      const int32_t *dequant, const int32_t *quant,
                      const qm_val_t *iqmatrix, const uint16_t *block_eob_rate,
@@ -1407,7 +1325,6 @@ void trellis_loop_lf(int scan_hi, int scan_lo, int plane, TX_SIZE tx_size,
                      const LV_MAP_COEFF_COST *txb_costs) {
   const int bwl = get_txb_bwl(tx_size);
   const int height = get_txb_high(tx_size);
-  const int shift = av1_get_tx_scale(tx_size);
   assert(plane == 0);
   assert(tx_class == TX_CLASS_2D);
   (void)plane;
@@ -1427,7 +1344,7 @@ void trellis_loop_lf(int scan_hi, int scan_lo, int plane, TX_SIZE tx_size,
 
     prequant_t pqData;
     int tempdqv = get_dqv(dequant, scan[scan_pos], iqmatrix);
-    av1_pre_quant(tcoeff[blk_pos], &pqData, quant, tempdqv, shift + 1,
+    av1_pre_quant(tcoeff[blk_pos], &pqData, quant, tempdqv, log_scale,
                   scan_pos);
 
     // init state
@@ -1460,14 +1377,14 @@ void trellis_loop(int first_scan_pos, int scan_hi, int scan_lo, int plane,
                   TX_SIZE tx_size, TX_CLASS tx_class, int32_t *tmp_sign,
                   int sharpness, tcq_levels_t *tcq_lev,
                   tcq_node_t trellis[MAX_TRELLIS][TOTALSTATES],
-                  tran_low_t *qcoeff, const int64_t rdmult, const int16_t *scan,
-                  const tran_low_t *tcoeff, const int32_t *dequant,
-                  const int32_t *quant, const qm_val_t *iqmatrix,
-                  const uint16_t *block_eob_rate, const TXB_CTX *const txb_ctx,
+                  tran_low_t *qcoeff, const int64_t rdmult, int log_scale,
+                  const int16_t *scan, const tran_low_t *tcoeff,
+                  const int32_t *dequant, const int32_t *quant,
+                  const qm_val_t *iqmatrix, const uint16_t *block_eob_rate,
+                  const TXB_CTX *const txb_ctx,
                   const LV_MAP_COEFF_COST *txb_costs) {
   const int bwl = get_txb_bwl(tx_size);
   const int height = get_txb_high(tx_size);
-  const int shift = av1_get_tx_scale(tx_size);
   (void)qcoeff;
 
   for (int scan_pos = scan_hi; scan_pos >= scan_lo; scan_pos--) {
@@ -1489,7 +1406,7 @@ void trellis_loop(int first_scan_pos, int scan_hi, int scan_lo, int plane,
 
     prequant_t pqData;
     int tempdqv = get_dqv(dequant, scan[scan_pos], iqmatrix);
-    av1_pre_quant(tcoeff[blk_pos], &pqData, quant, tempdqv, shift + 1,
+    av1_pre_quant(tcoeff[blk_pos], &pqData, quant, tempdqv, log_scale,
                   scan_pos);
 
     // init state
@@ -1877,10 +1794,11 @@ int av1_dep_quant(const struct AV1_COMP *cpi, MACROBLOCK *x, int plane,
 
   // Start of TCQ
   int first_scan_pos = si;
+  int log_scale = av1_get_tx_scale(tx_size) + 1;
   trellis_first_pos(first_scan_pos, plane, tx_size, tx_class, xd->tmp_sign,
-                    sharpness, &tcq_lev, trellis, qcoeff, rdmult, scan, tcoeff,
-                    dequant, quant, iqmatrix, block_eob_rate, txb_ctx,
-                    txb_costs);
+                    sharpness, &tcq_lev, trellis, qcoeff, rdmult, log_scale,
+                    scan, tcoeff, dequant, quant, iqmatrix, block_eob_rate,
+                    txb_ctx, txb_costs);
   int scan_hi = first_scan_pos - 1;
 
   if (scan_hi >= 0) {
@@ -1894,19 +1812,19 @@ int av1_dep_quant(const struct AV1_COMP *cpi, MACROBLOCK *x, int plane,
         int scan_lo = AOMMAX(scan_lf_start + 1, scan_hi - inc);
         trellis_loop_diagonal(scan_hi, scan_lo, 0, tx_size, TX_CLASS_2D, 0,
                               sharpness, &tcq_lev, tcq_ctx, trellis, qcoeff,
-                              rdmult, scan, tcoeff, dequant, quant, iqmatrix,
-                              block_eob_rate, txb_ctx, txb_costs);
+                              rdmult, log_scale, scan, tcoeff, dequant, quant,
+                              iqmatrix, block_eob_rate, txb_ctx, txb_costs);
         scan_hi = scan_lo - 1;
       }
       trellis_loop_lf(scan_hi, 0, plane, tx_size, tx_class, xd->tmp_sign,
-                      sharpness, &tcq_lev, trellis, qcoeff, rdmult, scan,
-                      tcoeff, dequant, quant, iqmatrix, block_eob_rate, txb_ctx,
-                      txb_costs);
+                      sharpness, &tcq_lev, trellis, qcoeff, rdmult, log_scale,
+                      scan, tcoeff, dequant, quant, iqmatrix, block_eob_rate,
+                      txb_ctx, txb_costs);
     } else {
       trellis_loop(first_scan_pos, scan_hi, 0, plane, tx_size, tx_class,
                    xd->tmp_sign, sharpness, &tcq_lev, trellis, qcoeff, rdmult,
-                   scan, tcoeff, dequant, quant, iqmatrix, block_eob_rate,
-                   txb_ctx, txb_costs);
+                   log_scale, scan, tcoeff, dequant, quant, iqmatrix,
+                   block_eob_rate, txb_ctx, txb_costs);
     }
   }
 
@@ -1915,7 +1833,6 @@ int av1_dep_quant(const struct AV1_COMP *cpi, MACROBLOCK *x, int plane,
   // find best path
   int min_rate = INT32_MAX;
   int64_t min_path_cost = INT64_MAX;
-  int log_scale = av1_get_tx_scale(tx_size) + 1;
   eob = av1_find_best_path(&trellis[0][0], scan, dequant, iqmatrix, tcoeff,
                            first_scan_pos, log_scale, qcoeff, dqcoeff,
                            &min_rate, &min_path_cost);

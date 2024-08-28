@@ -63,6 +63,68 @@ typedef struct tcq_coeff_ctx_t {
   uint8_t pad[3];
 } tcq_coeff_ctx_t;
 
+static AOM_FORCE_INLINE int get_low_range(int abs_qc, int lf) {
+  int base_levels = lf ? 6 : 4;
+  int parity = abs_qc & 1;
+#if ((COEFF_BASE_RANGE & 1) == 1)
+  int br_max = COEFF_BASE_RANGE + base_levels - 1 - parity;
+  int low = AOMMIN(abs_qc, br_max);
+  low -= base_levels - 1;
+#else
+  int abs2 = abs_qc & ~1;
+  int low = AOMMIN(abs2, COEFF_BASE_RANGE + base_levels - 2) + parity;
+  low -= base_levels - 1;
+#endif
+  return low;
+}
+
+static AOM_FORCE_INLINE int get_high_range(int abs_qc, int lf) {
+  int base_levels = lf ? 6 : 4;
+  int low_range = get_low_range(abs_qc, lf);
+  int high_range = (abs_qc - low_range - (base_levels - 1)) >> 1;
+  return high_range;
+}
+
+static AOM_FORCE_INLINE int get_golomb_cost_tcq(int abs_qc, int lf) {
+#if NEWHR
+  const int r = 1 + get_high_range(abs_qc, lf);
+  const int length = get_msb(r) + 1;
+  return av1_cost_literal(2 * length - 1);
+#else
+  int num_base_levels = lf ? LF_NUM_BASE_LEVELS : NUM_BASE_LEVELS;
+  if (abs_qc >= 1 + num_base_levels + COEFF_BASE_RANGE) {
+    const int r = abs_qc - COEFF_BASE_RANGE - NUM_BASE_LEVELS;
+    const int length = get_msb(r) + 1;
+    return av1_cost_literal(2 * length - 1);
+  }
+#endif  // NEWHR
+  return 0;
+}
+
+static AOM_FORCE_INLINE int get_br_lf_cost_tcq(tran_low_t level,
+                                               const int *coeff_lps) {
+#if NEWHR
+  const int base_range = get_low_range(level, 1);
+  if (base_range < COEFF_BASE_RANGE - 1) return coeff_lps[base_range];
+  return coeff_lps[base_range] + get_golomb_cost_tcq(level, 1);
+#else
+  const int base_range =
+      AOMMIN(level - 1 - LF_NUM_BASE_LEVELS, COEFF_BASE_RANGE);
+  return coeff_lps[base_range] + get_golomb_cost_tcq(level, 1);
+#endif
+}
+
+static INLINE int get_br_cost_tcq(tran_low_t level, const int *coeff_lps) {
+#if NEWHR
+  const int base_range = get_low_range(level, 0);
+  if (base_range < COEFF_BASE_RANGE - 1) return coeff_lps[base_range];
+  return coeff_lps[base_range] + get_golomb_cost_tcq(level, 0);
+#else
+  const int base_range = AOMMIN(level - 1 - NUM_BASE_LEVELS, COEFF_BASE_RANGE);
+  return coeff_lps[base_range] + get_golomb_cost_tcq(level, 0);
+#endif
+}
+
 // int av1_dep_quant(const struct AV1_COMP *cpi, MACROBLOCK *x, int plane,
 //                   int block, TX_SIZE tx_size, TX_TYPE tx_type,
 //                   CctxType cctx_type, const TXB_CTX *const txb_ctx,

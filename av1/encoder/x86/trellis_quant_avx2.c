@@ -271,54 +271,6 @@ void av1_calc_diag_ctx_avx2(int scan_hi, int scan_lo, int bwl,
   }
 }
 
-static INLINE int get_low_range(int abs_qc, int lf) {
-  int base_levels = lf ? 6 : 4;
-  int parity = abs_qc & 1;
-#if ((COEFF_BASE_RANGE & 1) == 1)
-  int br_max = COEFF_BASE_RANGE + base_levels - 1 - parity;
-  int low = AOMMIN(abs_qc, br_max);
-  low -= base_levels - 1;
-#else
-  int abs2 = abs_qc & ~1;
-  int low = AOMMIN(abs2, COEFF_BASE_RANGE + base_levels - 2) + parity;
-  low -= base_levels - 1;
-#endif
-  return low;
-}
-
-static INLINE int get_high_range(int abs_qc, int lf) {
-  int base_levels = lf ? 6 : 4;
-  int low_range = get_low_range(abs_qc, lf);
-  int high_range = (abs_qc - low_range - (base_levels - 1)) >> 1;
-  return high_range;
-}
-
-static INLINE int get_golomb_cost(int abs_qc) {
-#if NEWHR
-  const int r = 1 + get_high_range(abs_qc, 0);
-  const int length = get_msb(r) + 1;
-  return av1_cost_literal(2 * length - 1);
-#else
-  if (abs_qc >= 1 + NUM_BASE_LEVELS + COEFF_BASE_RANGE) {
-    const int r = abs_qc - COEFF_BASE_RANGE - NUM_BASE_LEVELS;
-    const int length = get_msb(r) + 1;
-    return av1_cost_literal(2 * length - 1);
-  }
-  return 0;
-#endif  // NEWHR
-}
-
-static INLINE int get_br_cost(tran_low_t level, const int *coeff_lps) {
-#if NEWHR
-  const int base_range = get_low_range(level, 0);
-  if (base_range < COEFF_BASE_RANGE - 1) return coeff_lps[base_range];
-  return coeff_lps[base_range] + get_golomb_cost(level);
-#else
-  const int base_range = AOMMIN(level - 1 - NUM_BASE_LEVELS, COEFF_BASE_RANGE);
-  return coeff_lps[base_range] + get_golomb_cost(level);
-#endif  // NEWHR
-}
-
 static INLINE int get_mid_cost_def(tran_low_t abs_qc, int coeff_ctx,
                                    const LV_MAP_COEFF_COST *txb_costs,
                                    int plane, int t_sign, int sign) {
@@ -329,40 +281,12 @@ static INLINE int get_mid_cost_def(tran_low_t abs_qc, int coeff_ctx,
   if (abs_qc > NUM_BASE_LEVELS) {
     int mid_ctx = coeff_ctx >> 4;
     if (plane == 0) {
-      cost += get_br_cost(abs_qc, txb_costs->lps_cost[mid_ctx]);
+      cost += get_br_cost_tcq(abs_qc, txb_costs->lps_cost[mid_ctx]);
     } else {
-      cost += get_br_cost(abs_qc, txb_costs->lps_cost_uv[mid_ctx]);
+      cost += get_br_cost_tcq(abs_qc, txb_costs->lps_cost_uv[mid_ctx]);
     }
   }
   return cost;
-}
-
-static AOM_FORCE_INLINE int get_golomb_cost_lf(int abs_qc) {
-#if NEWHR
-  const int r = 1 + get_high_range(abs_qc, 1);
-  const int length = get_msb(r) + 1;
-  return av1_cost_literal(2 * length - 1);
-#else
-  if (abs_qc >= 1 + LF_NUM_BASE_LEVELS + COEFF_BASE_RANGE) {
-    const int r = abs_qc - COEFF_BASE_RANGE - LF_NUM_BASE_LEVELS;
-    const int length = get_msb(r) + 1;
-    return av1_cost_literal(2 * length - 1);
-  }
-  return 0;
-#endif  // NEWHR
-}
-
-static AOM_FORCE_INLINE int get_br_lf_cost(tran_low_t level,
-                                           const int *coeff_lps) {
-#if NEWHR
-  const int base_range = get_low_range(level, 1);
-  if (base_range < COEFF_BASE_RANGE - 1) return coeff_lps[base_range];
-  return coeff_lps[base_range] + get_golomb_cost_lf(level);
-#else
-  const int base_range =
-      AOMMIN(level - 1 - LF_NUM_BASE_LEVELS, COEFF_BASE_RANGE);
-  return coeff_lps[base_range] + get_golomb_cost_lf(level);
-#endif  // NEWHR
 }
 
 static INLINE int get_mid_cost_eob(int ci, int limits, int is_dc,
@@ -389,12 +313,12 @@ static INLINE int get_mid_cost_eob(int ci, int limits, int is_dc,
     if (plane > 0) {
       if (abs_qc > LF_NUM_BASE_LEVELS) {
         int br_ctx = get_br_ctx_lf_eob_chroma(ci, tx_class);
-        cost += get_br_lf_cost(abs_qc, txb_costs->lps_lf_cost_uv[br_ctx]);
+        cost += get_br_lf_cost_tcq(abs_qc, txb_costs->lps_lf_cost_uv[br_ctx]);
       }
     } else {
       if (abs_qc > LF_NUM_BASE_LEVELS) {
         int br_ctx = get_br_ctx_lf_eob(ci, tx_class);
-        cost += get_br_lf_cost(abs_qc, txb_costs->lps_lf_cost[br_ctx]);
+        cost += get_br_lf_cost_tcq(abs_qc, txb_costs->lps_lf_cost[br_ctx]);
       }
     }
   } else {
@@ -404,12 +328,12 @@ static INLINE int get_mid_cost_eob(int ci, int limits, int is_dc,
     if (plane > 0) {
       if (abs_qc > NUM_BASE_LEVELS) {
         int br_ctx = 0; /* get_br_ctx_eob_chroma */
-        cost += get_br_cost(abs_qc, txb_costs->lps_cost_uv[br_ctx]);
+        cost += get_br_cost_tcq(abs_qc, txb_costs->lps_cost_uv[br_ctx]);
       }
     } else {
       if (abs_qc > NUM_BASE_LEVELS) {
         int br_ctx = 0; /* get_br_ctx_eob */
-        cost += get_br_cost(abs_qc, txb_costs->lps_cost[br_ctx]);
+        cost += get_br_cost_tcq(abs_qc, txb_costs->lps_cost[br_ctx]);
       }
     }
   }
@@ -430,11 +354,11 @@ static int get_mid_cost_lf_dc(int ci, tran_low_t abs_qc, int sign,
     cost += txb_costs->dc_sign_cost[dc_ph_group][dc_sign_ctx][sign];
   if (plane > 0) {
     if (abs_qc > LF_NUM_BASE_LEVELS) {
-      cost += get_br_lf_cost(abs_qc, txb_costs->lps_lf_cost_uv[mid_ctx]);
+      cost += get_br_lf_cost_tcq(abs_qc, txb_costs->lps_lf_cost_uv[mid_ctx]);
     }
   } else {
     if (abs_qc > LF_NUM_BASE_LEVELS) {
-      cost += get_br_lf_cost(abs_qc, txb_costs->lps_lf_cost[mid_ctx]);
+      cost += get_br_lf_cost_tcq(abs_qc, txb_costs->lps_lf_cost[mid_ctx]);
     }
   }
   return cost;
@@ -448,16 +372,16 @@ static int get_mid_cost_lf(tran_low_t abs_qc, int coeff_ctx,
   assert(plane == 0);
   (void)plane;
   if (abs_qc > LF_NUM_BASE_LEVELS) {
-    cost += get_br_lf_cost(abs_qc, txb_costs->lps_lf_cost[mid_ctx]);
+    cost += get_br_lf_cost_tcq(abs_qc, txb_costs->lps_lf_cost[mid_ctx]);
   }
 #else
   if (plane > 0) {
     if (abs_qc > LF_NUM_BASE_LEVELS) {
-      cost += get_br_lf_cost(abs_qc, txb_costs->lps_lf_cost_uv[mid_ctx]);
+      cost += get_br_lf_cost_tcq(abs_qc, txb_costs->lps_lf_cost_uv[mid_ctx]);
     }
   } else {
     if (abs_qc > LF_NUM_BASE_LEVELS) {
-      cost += get_br_lf_cost(abs_qc, txb_costs->lps_lf_cost[mid_ctx]);
+      cost += get_br_lf_cost_tcq(abs_qc, txb_costs->lps_lf_cost[mid_ctx]);
     }
   }
 #endif

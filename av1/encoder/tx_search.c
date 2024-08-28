@@ -2369,13 +2369,6 @@ static int skip_trellis_opt_based_on_satd(MACROBLOCK *x,
                                           int quant_b_adapt, int qstep,
                                           unsigned int coeff_opt_satd_threshold,
                                           int skip_trellis, int dc_only_blk) {
-#if CONFIG_DQ
-#if DQENABLE
-  if (dq_enable(tx_size, plane))
-#endif
-    return skip_trellis;
-#endif
-
   if (skip_trellis || (coeff_opt_satd_threshold == UINT_MAX))
     return skip_trellis;
 
@@ -2556,9 +2549,7 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
       best_eob = intra_txb_rd_info->eob;
       best_tx_type = intra_txb_rd_info->tx_type;
 #if CONFIG_DQ
-#if DQENABLE
-      if (dq_enable(tx_size, plane))
-#endif
+      if (dq_enable(cm->features.tcq_mode, tx_size, plane))
         // perform_block_coeff_opt : Whether trellis optimization is done.
         // we do not skip any optimization in loop of txfm search. so make sure
         // each block is optimized.
@@ -2627,21 +2618,15 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
   // TODO(any): Experiment with variance and mean based thresholds
   int perform_block_coeff_opt = 0;
 #if CONFIG_DQ
-#if DQENABLE
-  if (dq_enable(tx_size, plane))
-#endif  // DQENABLE
+  if (dq_enable(cm->features.tcq_mode, tx_size, plane)) {
     perform_block_coeff_opt = 1;
-#if DQENABLE
-  else
+  } else
+#endif
+  {
     perform_block_coeff_opt =
         ((uint64_t)block_mse_q8 <=
          (uint64_t)txfm_params->coeff_opt_dist_threshold * qstep * qstep);
-#endif  // DQENABLE
-#else
-  perform_block_coeff_opt =
-      ((uint64_t)block_mse_q8 <=
-       (uint64_t)txfm_params->coeff_opt_dist_threshold * qstep * qstep);
-#endif
+  }
   skip_trellis |= !perform_block_coeff_opt;
 
   // Flag to indicate if distortion should be calculated in transform domain or
@@ -2820,12 +2805,17 @@ static void search_tx_type(const AV1_COMP *cpi, MACROBLOCK *x, int plane,
           av1_xform_dc_only(x, plane, block, &txfm_param, per_px_mean);
         *coeffs_available = 1;
 
-        skip_trellis_based_on_satd[txfm_param.tx_type] =
-            skip_trellis_opt_based_on_satd(
-                x, &quant_param, plane, block, tx_size,
-                cpi->oxcf.q_cfg.quant_b_adapt, qstep,
-                txfm_params->coeff_opt_satd_threshold, skip_trellis_in,
-                dc_only_blk);
+#if CONFIG_DQ
+        if (dq_enable(cm->features.tcq_mode, tx_size, plane)) {
+          skip_trellis_based_on_satd[txfm_param.tx_type] = skip_trellis;
+        } else
+#endif
+          skip_trellis_based_on_satd[txfm_param.tx_type] =
+              skip_trellis_opt_based_on_satd(
+                  x, &quant_param, plane, block, tx_size,
+                  cpi->oxcf.q_cfg.quant_b_adapt, qstep,
+                  txfm_params->coeff_opt_satd_threshold, skip_trellis_in,
+                  dc_only_blk);
 
         uint8_t fsc_mode_in = (mbmi->fsc_mode[xd->tree_type == CHROMA_PART] &&
                                plane == PLANE_TYPE_Y) ||
