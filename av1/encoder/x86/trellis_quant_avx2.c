@@ -1198,7 +1198,8 @@ int av1_find_best_path_avx2(const struct tcq_node_t *trellis,
       __m128i abs_lev = _mm_slli_epi32(info, 8);
       __m128i abs_lev2 = _mm_srli_epi32(abs_lev, 7);
       abs_lev = _mm_srli_epi32(abs_lev, 8);
-      __m128i dq = _mm_srai_epi32(info, 25);
+      __m128i dq = _mm_slli_epi32(info, 6);
+      dq = _mm_srli_epi32(dq, 31);
       __m128i dq_mask = _mm_srai_epi32(info, 31);
       dq = _mm_andnot_si128(dq_mask, dq);
       abs_lev2 = _mm_sub_epi32(abs_lev2, dq);
