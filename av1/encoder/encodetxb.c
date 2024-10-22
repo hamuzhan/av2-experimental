@@ -1066,7 +1066,7 @@ static void write_high_range(aom_writer *w, int enable_tcq, int level, int lf
     write_adaptive_hr(w, hr, hr_level_avg);
     *hr_avg = (hr_level_avg + hr) >> 1;
 #else
-    write_exp_golomb(w, hr_lev, 0);
+    write_exp_golomb(w, hr, 0);
 #endif
   }
 }
