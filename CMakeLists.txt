@@ -983,6 +983,8 @@ if(CONFIG_TENSORFLOW_LITE AND CONFIG_AV1_ENCODER)
 endif()
 
 if(CONFIG_ML_PART_SPLIT AND CONFIG_AV1_ENCODER)
+  add_dependencies(aom cnpy)
+  target_link_libraries(aom PRIVATE cnpy)
   if(ENABLE_EXAMPLES OR ENABLE_TOOLS)
     foreach(aom_app ${AOM_APP_TARGETS})
       add_dependencies(${aom_app} cnpy)

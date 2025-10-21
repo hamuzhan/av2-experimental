@@ -11,3 +11,4 @@ find_package(ZLIB REQUIRED)
 include_directories(${ZLIB_INCLUDE_DIRS})
 
 add_library(cnpy STATIC "cnpy.cpp")
+target_link_libraries(cnpy PRIVATE ${ZLIB_LIBRARIES})
