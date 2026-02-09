@@ -26,7 +26,6 @@ static void read_ops_mlayer_info(int obuXLId, int opsID, int opIndex, int xLId,
   // mlayer map
   ops_mlayer_info->ops_mlayer_map[obuXLId][opsID][opIndex][xLId] =
       avm_rb_read_literal(rb, MAX_NUM_MLAYERS);
-  ops_mlayer_info->OPMLayerCount[obuXLId][opsID][opIndex][xLId] = 0;
   int mCount = 0;
   for (int j = 0; j < MAX_NUM_MLAYERS; j++) {
     if ((ops_mlayer_info->ops_mlayer_map[obuXLId][opsID][opIndex][xLId] &
