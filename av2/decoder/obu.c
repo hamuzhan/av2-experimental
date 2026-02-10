@@ -137,14 +137,46 @@ void av2_read_color_info(int *color_description_idc, int *color_primaries,
   // should be ignored by decoders conforming to this version of this
   // specification.
   *color_description_idc = avm_rb_read_rice_golomb(rb, 2);
-  if (*color_description_idc == AVM_COLOR_DESC_IDC_EXPLICIT) {
-    *color_primaries = avm_rb_read_literal(rb, 8);
-    *transfer_characteristics = avm_rb_read_literal(rb, 8);
-    *matrix_coefficients = avm_rb_read_literal(rb, 8);
-  } else {
-    *color_primaries = AVM_CICP_CP_UNSPECIFIED;
-    *transfer_characteristics = AVM_CICP_TC_UNSPECIFIED;
-    *matrix_coefficients = AVM_CICP_MC_UNSPECIFIED;
+  if (*color_description_idc > 15) {
+    rb->error_handler(rb->error_handler_data, AVM_CODEC_UNSUP_BITSTREAM,
+                      "color_description_idc is greater than 15");
+  }
+  switch (*color_description_idc) {
+    case AVM_COLOR_DESC_IDC_EXPLICIT:  // 0
+      *color_primaries = avm_rb_read_literal(rb, 8);
+      *transfer_characteristics = avm_rb_read_literal(rb, 8);
+      *matrix_coefficients = avm_rb_read_literal(rb, 8);
+      break;
+    case AVM_COLOR_DESC_IDC_BT709SDR:                  // 1
+      *color_primaries = AVM_CICP_CP_BT_709;           // 1
+      *transfer_characteristics = AVM_CICP_TC_BT_709;  // 1
+      *matrix_coefficients = AVM_CICP_MC_BT_470_B_G;   // 5
+      break;
+    case AVM_COLOR_DESC_IDC_BT2100PQ:                      // 2
+      *color_primaries = AVM_CICP_CP_BT_2020;              // 9
+      *transfer_characteristics = AVM_CICP_TC_SMPTE_2084;  // 16
+      *matrix_coefficients = AVM_CICP_MC_BT_2020_NCL;      // 9
+      break;
+    case AVM_COLOR_DESC_IDC_BT2100HLG:                 // 3
+      *color_primaries = AVM_CICP_CP_BT_2020;          // 9
+      *transfer_characteristics = AVM_CICP_TC_HLG;     // 18
+      *matrix_coefficients = AVM_CICP_MC_BT_2020_NCL;  // 9
+      break;
+    case AVM_COLOR_DESC_IDC_SRGB:                    // 4
+      *color_primaries = AVM_CICP_CP_BT_709;         // 1
+      *transfer_characteristics = AVM_CICP_TC_SRGB;  // 13
+      *matrix_coefficients = AVM_CICP_MC_IDENTITY;   // 0
+      break;
+    case AVM_COLOR_DESC_IDC_SRGBSYCC:                 // 5
+      *color_primaries = AVM_CICP_CP_BT_709;          // 1
+      *transfer_characteristics = AVM_CICP_TC_SRGB;   // 13
+      *matrix_coefficients = AVM_CICP_MC_BT_470_B_G;  // 5
+      break;
+    default:
+      *color_primaries = AVM_CICP_CP_UNSPECIFIED;
+      *transfer_characteristics = AVM_CICP_TC_UNSPECIFIED;
+      *matrix_coefficients = AVM_CICP_MC_UNSPECIFIED;
+      break;
   }
   *full_range_flag = avm_rb_read_bit(rb);
 }
