@@ -69,7 +69,7 @@ const EncodeParameters kAV2EncodeParameterSet[] = {
     { 0, 0 } },
   { 0,
     AVM_CICP_CP_BT_2020,
-    AVM_CICP_TC_BT_2020_10_BIT,
+    AVM_CICP_TC_HLG,
     AVM_CICP_MC_BT_2020_NCL,
     AVM_CR_FULL_RANGE,
     AVM_CSP_TOPLEFT,
