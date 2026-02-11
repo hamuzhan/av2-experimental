@@ -209,11 +209,6 @@ typedef struct TileBufferDec {
   size_t size;
 } TileBufferDec;
 
-typedef struct DataBuffer {
-  const uint8_t *data;
-  size_t size;
-} DataBuffer;
-
 typedef struct TileJobsDec {
   TileBufferDec *tile_buffer;
   TileDataDec *tile_data;
@@ -387,7 +382,6 @@ typedef struct AV2Decoder {
 
   uint32_t uncomp_hdr_size_in_bits;
 
-  DataBuffer obu_size_hdr;
   OBU_TYPE obu_type;
   int tile_count_minus_1;
 

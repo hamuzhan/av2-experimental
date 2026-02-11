@@ -2168,9 +2168,6 @@ int avm_decode_frame_from_obus(struct AV2Decoder *pbi, const uint8_t *data,
 
     check_valid_layer_id(obu_header, cm);
 
-    // Record obu size header information.
-    pbi->obu_size_hdr.data = data + obu_header.size;
-    pbi->obu_size_hdr.size = bytes_read - obu_header.size;
     pbi->obu_type = obu_header.type;
 
     // Note: avm_read_obu_header_and_size() takes care of checking that this
