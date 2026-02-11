@@ -167,7 +167,7 @@ void av2_read_color_info(int *color_description_idc, int *color_primaries,
       *transfer_characteristics = AVM_CICP_TC_SRGB;  // 13
       *matrix_coefficients = AVM_CICP_MC_IDENTITY;   // 0
       break;
-    case AVM_COLOR_DESC_IDC_SRGBSYCC:                 // 5
+    case AVM_COLOR_DESC_IDC_SYCC:                     // 5
       *color_primaries = AVM_CICP_CP_BT_709;          // 1
       *transfer_characteristics = AVM_CICP_TC_SRGB;   // 13
       *matrix_coefficients = AVM_CICP_MC_BT_470_B_G;  // 5

@@ -810,7 +810,7 @@ static void set_content_interpreation_params(struct AV2_COMP *cpi,
                  AVM_CICP_TC_SRGB &&
              ci_params->color_info.matrix_coefficients ==
                  AVM_CICP_MC_BT_470_B_G) {
-    ci_params->color_info.color_description_idc = AVM_COLOR_DESC_IDC_SRGBSYCC;
+    ci_params->color_info.color_description_idc = AVM_COLOR_DESC_IDC_SYCC;
   } else if (ci_params->color_info.color_primaries == AVM_CICP_CP_BT_2020 &&
              ci_params->color_info.transfer_characteristics ==
                  AVM_CICP_TC_SMPTE_2084 &&
@@ -843,7 +843,7 @@ static void set_content_interpreation_params(struct AV2_COMP *cpi,
              (ci_params->color_info.color_description_idc ==
               AVM_COLOR_DESC_IDC_SRGB) ||
              (ci_params->color_info.color_description_idc ==
-              AVM_COLOR_DESC_IDC_SRGBSYCC) ||
+              AVM_COLOR_DESC_IDC_SYCC) ||
              (ci_params->color_info.color_description_idc ==
               AVM_COLOR_DESC_IDC_BT2100PQ) ||
              (ci_params->color_info.color_description_idc ==

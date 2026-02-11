@@ -191,7 +191,7 @@ typedef enum avm_color_description {
   AVM_COLOR_DESC_IDC_BT2100PQ = 2,   // CP=9, TC=16, MC=9
   AVM_COLOR_DESC_IDC_BT2100HLG = 3,  // CP=9, TC=18, MC=9
   AVM_COLOR_DESC_IDC_SRGB = 4,       // CP=1, TC=13, MC=0
-  AVM_COLOR_DESC_IDC_SRGBSYCC = 5,   // CP=1, TC=13, MC=5
+  AVM_COLOR_DESC_IDC_SYCC = 5,       // CP=1, TC=13, MC=5
 } avm_color_description_t;
 
 /*!\brief List of insert flags for Metadata
