@@ -163,7 +163,38 @@ static INLINE void update_gf_group_index(AV2_COMP *cpi) {
   // a show_existing_frame with a source other than altref, or if it is not
   // a displayed forward keyframe, the index was incremented when it was
   // originally encoded.
-  ++cpi->gf_group.index;
+  if (!cpi->oxcf.unit_test_cfg.multi_layers_lag_test) {
+    ++cpi->gf_group.index;
+  } else {
+    // To be updated based on the (multi_layers) tests for nonzero lag.
+    // The current test is for fixed GOP with keyframe_filtering off.
+    GF_GROUP *const gf_group = &cpi->gf_group;
+    if (gf_group->update_type[cpi->gf_group.index] == ARF_UPDATE ||
+        gf_group->update_type[cpi->gf_group.index] == INTNL_ARF_UPDATE ||
+        gf_group->update_type[cpi->gf_group.index] == KFFLT_UPDATE) {
+      ++gf_group->index;
+      if (cpi->common.mlayer_id == 0) gf_group->arf_update_counter++;
+    } else if (cpi->common.mlayer_id == 0 && cpi->gf_group.index > 0 &&
+               gf_group->update_type[cpi->gf_group.index] == LF_UPDATE &&
+               (gf_group->update_type[cpi->gf_group.index - 1] == ARF_UPDATE ||
+                gf_group->update_type[cpi->gf_group.index - 1] ==
+                    INTNL_ARF_UPDATE ||
+                gf_group->update_type[cpi->gf_group.index - 1] ==
+                    OVERLAY_UPDATE ||
+                gf_group->update_type[cpi->gf_group.index - 1] ==
+                    INTNL_OVERLAY_UPDATE ||
+                gf_group->update_type[cpi->gf_group.index - 1] ==
+                    KFFLT_OVERLAY_UPDATE)) {
+      // This willl force the next encode_call to encode ARFs followed by LF
+      // at the next ml layer.
+      gf_group->index = gf_group->index - gf_group->arf_update_counter;
+      gf_group->arf_update_counter = 0;
+    } else if ((unsigned int)cpi->common.mlayer_id ==
+               cpi->common.number_mlayers - 1) {
+      // Every regular frame is encoded with same source up to number_mlayers.
+      ++gf_group->index;
+    }
+  }
 }
 
 static void update_rc_counts(AV2_COMP *cpi) {
