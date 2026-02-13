@@ -575,6 +575,7 @@ static avm_codec_err_t check_random_access_frame_unit(
   bool has_seq_header = false;
   int frame_unit_mlayer_id = -1;
   const uint8_t *data_read = data;
+  size_t bytes_available = data_sz;
   ObuHeader obu_header;
   OBU_TYPE current_frame_obu_type = 0;
   memset(&obu_header, 0, sizeof(obu_header));
@@ -584,11 +585,17 @@ static avm_codec_err_t check_random_access_frame_unit(
   while (data_read < data + data_sz) {
     size_t payload_size = 0;
     size_t bytes_read = 0;
-    res = avm_read_obu_header_and_size(data_read, data_sz, &obu_header,
+    res = avm_read_obu_header_and_size(data_read, bytes_available, &obu_header,
                                        &payload_size, &bytes_read);
     if (res != AVM_CODEC_OK) return res;
+    data_read += bytes_read;
+    bytes_available -= bytes_read;
+    if (bytes_available < payload_size) {
+      return AVM_CODEC_CORRUPT_FRAME;
+    }
+    data_read += payload_size;
+    bytes_available -= payload_size;
     pbi->num_obus_with_frame_unit++;
-    data_read += bytes_read + payload_size;
     has_key_frames |= obu_header.type == OBU_CLK || obu_header.type == OBU_OLK;
     has_seq_header |= obu_header.type == OBU_SEQUENCE_HEADER;
     if (is_single_tile_vcl_obu(obu_header.type) ||
