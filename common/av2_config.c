@@ -444,8 +444,6 @@ int read_av2config(const uint8_t *buffer, size_t buffer_length,
   AV2C_READ_BITS_OR_RETURN_ERROR(chroma_sample_position, 3);
   config->chroma_sample_position = chroma_sample_position;
 
-  AV2C_READ_BITS_OR_RETURN_ERROR(reserved, 2);
-
   AV2C_READ_BIT_OR_RETURN_ERROR(initial_presentation_delay_present);
   config->initial_presentation_delay_present =
       initial_presentation_delay_present;
@@ -483,7 +481,6 @@ int write_av2config(const Av2Config *config, size_t capacity,
   avm_wb_write_bit(&writer, config->chroma_subsampling_x);
   avm_wb_write_bit(&writer, config->chroma_subsampling_y);
   avm_wb_write_literal(&writer, config->chroma_sample_position, 3);
-  avm_wb_write_literal(&writer, 0, 2);  // reserved
   avm_wb_write_bit(&writer, config->initial_presentation_delay_present);
 
   if (config->initial_presentation_delay_present) {
