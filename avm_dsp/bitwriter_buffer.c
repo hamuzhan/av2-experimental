@@ -221,6 +221,7 @@ int avm_wb_count_primitive_refsubexpfin(uint16_t n, uint16_t k, int16_t ref,
 // implementation of leb128() signaling in the specification using
 // avm_write_bit_buffer
 void avm_wb_write_uleb(struct avm_write_bit_buffer *wb, uint32_t value) {
+  assert(avm_wb_is_byte_aligned(wb));
   uint32_t enc_val = value;
   const size_t leb_size = avm_uleb_size_in_bytes(enc_val);
   for (size_t i = 0; i < leb_size; ++i) {

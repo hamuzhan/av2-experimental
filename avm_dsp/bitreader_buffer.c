@@ -150,6 +150,13 @@ int16_t avm_rb_read_signed_primitive_refsubexpfin(
 // implementation of leb128() signaling in the specification using
 // avm_read_bit_buffer
 uint32_t avm_rb_read_uleb(struct avm_read_bit_buffer *rb) {
+  if (rb->bit_offset % 8 != 0) {
+    if (rb->error_handler) {
+      rb->error_handler(rb->error_handler_data, AVM_CODEC_ERROR,
+                        "leb128() is not byte aligned");
+    }
+    return 0;
+  }
   uint64_t value = 0;
   for (size_t i = 0; i < 8; ++i) {
     uint64_t byte = avm_rb_read_literal(rb, 8);
