@@ -1934,17 +1934,8 @@ static void check_valid_layer_id(ObuHeader obu_header, AV2_COMMON *const cm) {
   }
   if (obu_header.type == OBU_SEQUENCE_HEADER ||
       obu_header.type == OBU_TEMPORAL_DELIMITER ||
-      obu_header.type == OBU_MULTI_FRAME_HEADER) {
-    if (obu_header.obu_tlayer_id != 0 || obu_header.obu_mlayer_id != 0 ||
-        obu_header.obu_xlayer_id == GLOBAL_XLAYER_ID)
-      avm_internal_error(&cm->error, AVM_CODEC_UNSUP_BITSTREAM,
-                         "Incorrect layer_id for %s: "
-                         "tlayer_id %d mlayer_id %d xlayer_id %d",
-                         avm_obu_type_to_string(obu_header.type),
-                         obu_header.obu_tlayer_id, obu_header.obu_mlayer_id,
-                         obu_header.obu_xlayer_id);
-  }
-  if (obu_header.type == OBU_LAYER_CONFIGURATION_RECORD ||
+      obu_header.type == OBU_MULTI_FRAME_HEADER ||
+      obu_header.type == OBU_LAYER_CONFIGURATION_RECORD ||
       obu_header.type == OBU_OPERATING_POINT_SET ||
       obu_header.type == OBU_ATLAS_SEGMENT) {
     if (obu_header.obu_tlayer_id != 0 || obu_header.obu_mlayer_id != 0)
@@ -1958,7 +1949,8 @@ static void check_valid_layer_id(ObuHeader obu_header, AV2_COMMON *const cm) {
   // MSDO, LCR, OPS, Atlas, Metadata Group OBU, Padding, and Temporal Delimiter.
   // Buffer removal timing (G010)
   if (obu_header.obu_xlayer_id == GLOBAL_XLAYER_ID &&
-      !(obu_header.type == OBU_METADATA_GROUP ||
+      !(obu_header.type == OBU_TEMPORAL_DELIMITER ||
+        obu_header.type == OBU_METADATA_GROUP ||
         obu_header.type == OBU_BUFFER_REMOVAL_TIMING ||
         obu_header.type == OBU_LAYER_CONFIGURATION_RECORD ||
         obu_header.type == OBU_ATLAS_SEGMENT ||
