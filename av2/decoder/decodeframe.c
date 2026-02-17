@@ -7524,7 +7524,11 @@ static int read_uncompressed_header(AV2Decoder *pbi, OBU_TYPE obu_type,
   // TODO: Replace this with a CLI option that allows to choose an operating
   // point by external means.
   if (pbi->ops_counter > 0) {
+#if CONFIG_AV2_PROFILES
+    pbi->operating_point = pbi->ops_list[0][0].ops_id;
+#else
     pbi->operating_point = pbi->ops_list[0].ops_id[0];
+#endif  // CONFIG_AV2_PROFILES
   } else {
     pbi->operating_point = 0;
   }
