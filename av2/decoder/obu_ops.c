@@ -200,7 +200,7 @@ uint32_t av2_read_operating_point_set_obu(struct AV2Decoder *pbi,
               avm_rb_read_literal(rb, LEVEL_BITS);
           op->ops_tier_flag[obu_xlayer_id] = avm_rb_read_bit(rb);
           op->ops_mlayer_count[obu_xlayer_id] = avm_rb_read_literal(rb, 3);
-          (void)avm_rb_read_literal(rb, 2);  // ops_reserved_2bits
+          (void)avm_rb_read_literal(rb, 2);  // ops_ptl_reserved_2bits
         }
       }
       if (ops->ops_color_info_present_flag) {
@@ -242,7 +242,7 @@ uint32_t av2_read_operating_point_set_obu(struct AV2Decoder *pbi,
               op->ops_level_idx[j] = avm_rb_read_literal(rb, LEVEL_BITS);
               op->ops_tier_flag[j] = avm_rb_read_bit(rb);
               op->ops_mlayer_count[j] = avm_rb_read_literal(rb, 3);
-              (void)avm_rb_read_literal(rb, 2);  // ops_reserved_2bits
+              (void)avm_rb_read_literal(rb, 2);  // ops_ptl_reserved_2bits
             }
             // The ops_mlayer_indo_idc = 0, specifies that mlayer information
             // syntax structure is not present in the current OPS.

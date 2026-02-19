@@ -481,7 +481,7 @@ uint32_t av2_write_operating_point_set_obu(AV2_COMP *cpi, int obu_xlayer_id,
         avm_wb_write_literal(&wb, op->ops_level_idx[obu_xlayer_id], LEVEL_BITS);
         avm_wb_write_bit(&wb, op->ops_tier_flag[obu_xlayer_id]);
         avm_wb_write_literal(&wb, op->ops_mlayer_count[obu_xlayer_id], 3);
-        avm_wb_write_literal(&wb, 0, 2);  // ops_reserved_2bits
+        avm_wb_write_literal(&wb, 0, 2);  // ops_ptl_reserved_2bits
       }
     }
     if (ops->ops_color_info_present_flag)
