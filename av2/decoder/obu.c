@@ -1978,19 +1978,19 @@ static void check_valid_layer_id(ObuHeader obu_header, AV2_COMMON *const cm) {
   // Ignore reserved OBUs.
   if (!avm_obu_type_is_valid(obu_header.type)) return;
 
-  if (obu_header.type == OBU_MSDO) {
-    if (obu_header.obu_tlayer_id != 0)
-      avm_internal_error(&cm->error, AVM_CODEC_UNSUP_BITSTREAM,
-                         "Incorrect tlayer_id for MSDO: %d",
-                         obu_header.obu_tlayer_id);
-    if (obu_header.obu_mlayer_id != 0)
-      avm_internal_error(&cm->error, AVM_CODEC_UNSUP_BITSTREAM,
-                         "Incorrect obu_mlayer_id for MSDO: %d",
-                         obu_header.obu_mlayer_id);
-    if (obu_header.obu_xlayer_id != GLOBAL_XLAYER_ID)
-      avm_internal_error(&cm->error, AVM_CODEC_UNSUP_BITSTREAM,
-                         "Incorrect obu_xlayer_id for MSDO: %d",
-                         obu_header.obu_xlayer_id);
+  if (obu_header.obu_xlayer_id == GLOBAL_XLAYER_ID &&
+      (obu_header.obu_tlayer_id != 0 || obu_header.obu_mlayer_id != 0)) {
+    avm_internal_error(
+        &cm->error, AVM_CODEC_UNSUP_BITSTREAM,
+        "Incorrect layer_id for %s: tlayer_id %d mlayer_id %d xlayer_id %d",
+        avm_obu_type_to_string(obu_header.type), obu_header.obu_tlayer_id,
+        obu_header.obu_mlayer_id, obu_header.obu_xlayer_id);
+  }
+  if (obu_header.type == OBU_MSDO &&
+      obu_header.obu_xlayer_id != GLOBAL_XLAYER_ID) {
+    avm_internal_error(&cm->error, AVM_CODEC_UNSUP_BITSTREAM,
+                       "Incorrect obu_xlayer_id for MSDO: %d",
+                       obu_header.obu_xlayer_id);
   }
   if (obu_header.type == OBU_SEQUENCE_HEADER ||
       obu_header.type == OBU_TEMPORAL_DELIMITER ||
