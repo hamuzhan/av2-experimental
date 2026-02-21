@@ -244,6 +244,8 @@ static void store_xlayer_context(AV2Decoder *pbi, AV2_COMMON *cm,
   pbi->stream_info[stream_idx].active_lcr_buf = pbi->active_lcr;
   pbi->stream_info[stream_idx].active_atlas_segment_info_buf =
       pbi->active_atlas_segment_info;
+  pbi->stream_info[xlayer_id].ops_counter_buf = pbi->ops_counter;
+
   for (int i = 0; i < NUM_CUSTOM_QMS; i++) {
     pbi->stream_info[stream_idx].qm_list_buf[i] = pbi->qm_list[i];
     pbi->stream_info[stream_idx].qm_protected_buf[i] = pbi->qm_protected[i];
@@ -260,6 +262,11 @@ static void store_xlayer_context(AV2Decoder *pbi, AV2_COMMON *cm,
   pbi->stream_info[stream_idx].last_frame_seg_map_buf = cm->last_frame_seg_map;
   pbi->stream_info[stream_idx].ci_params_per_layer_buf[cm->mlayer_id] =
       cm->ci_params_per_layer[cm->mlayer_id];
+  pbi->stream_info[xlayer_id].seq_params_buf = cm->seq_params;
+  pbi->stream_info[xlayer_id].seq_header_count_buf = pbi->seq_header_count;
+  for (int i = 0; i < MAX_MFH_NUM; i++) {
+    pbi->stream_info[xlayer_id].mfh_valid_buf[i] = cm->mfh_valid[i];
+  }
 }
 
 // Helper function to restore xlayer context
@@ -305,6 +312,7 @@ static void restore_xlayer_context(AV2Decoder *pbi, AV2_COMMON *cm,
   pbi->active_lcr = pbi->stream_info[stream_idx].active_lcr_buf;
   pbi->active_atlas_segment_info =
       pbi->stream_info[stream_idx].active_atlas_segment_info_buf;
+  pbi->ops_counter = pbi->stream_info[xlayer_id].ops_counter_buf;
   for (int i = 0; i < NUM_CUSTOM_QMS; i++) {
     pbi->qm_list[i] = pbi->stream_info[stream_idx].qm_list_buf[i];
     pbi->qm_protected[i] = pbi->stream_info[stream_idx].qm_protected_buf[i];
@@ -321,6 +329,27 @@ static void restore_xlayer_context(AV2Decoder *pbi, AV2_COMMON *cm,
   cm->last_frame_seg_map = pbi->stream_info[stream_idx].last_frame_seg_map_buf;
   cm->ci_params_per_layer[cm->mlayer_id] =
       pbi->stream_info[stream_idx].ci_params_per_layer_buf[cm->mlayer_id];
+  cm->seq_params = pbi->stream_info[xlayer_id].seq_params_buf;
+  pbi->seq_header_count = pbi->stream_info[xlayer_id].seq_header_count_buf;
+  for (int i = 0; i < MAX_MFH_NUM; i++) {
+    cm->mfh_valid[i] = pbi->stream_info[xlayer_id].mfh_valid_buf[i];
+  }
+}
+
+static void init_stream_info(StreamInfo *stream_info) {
+  stream_info->olk_encountered_buf = 0;
+  stream_info->random_access_point_index_buf = -1;
+  stream_info->random_access_point_count_buf = 0;
+  for (int i = 0; i < INTER_REFS_PER_FRAME; ++i) {
+    stream_info->remapped_ref_idx_buf[i] = INVALID_IDX;
+  }
+  for (int i = 0; i < REF_FRAMES; i++) {
+    stream_info->ref_frame_map_buf[i] = NULL;
+  }
+  stream_info->mfh_valid_buf[0] = true;
+  for (int i = 1; i < MAX_MFH_NUM; i++) {
+    stream_info->mfh_valid_buf[i] = false;
+  }
 }
 
 static uint32_t read_multi_stream_decoder_operation_obu(
@@ -380,6 +409,9 @@ static uint32_t read_multi_stream_decoder_operation_obu(
   if (pbi->stream_info == NULL) {
     avm_internal_error(&cm->error, AVM_CODEC_MEM_ERROR,
                        "Memory allocation failed for pbi->stream_info\n");
+  }
+  for (int i = 0; i < num_streams; i++) {
+    init_stream_info(&pbi->stream_info[i]);
   }
 
   pbi->msdo_is_present_in_tu = 1;
