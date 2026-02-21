@@ -316,6 +316,17 @@ class MultiLayerTest : public ::libavm_test::CodecTestWithParam<int>,
   bool pyramid_level_one_;
 };
 
+// The pattern for 2TL is as follows, where prediction can only be within
+// the current tl layer or from lower tl layers.
+// ts is the timestamp of incoming frame.
+//
+//                    |                         |
+//
+//
+//        |                        |                  . . .
+//
+//       TL0         TL1          TL0         TL1
+//      ts=0        ts=1         ts=2         ts=3
 TEST_P(MultiLayerTest, MultiLayerTest2Temporal) {
   ::libavm_test::Y4mVideoSource video_nonsc("park_joy_90p_8_420.y4m", 0, 20);
   num_temporal_layers_ = 2;
@@ -338,6 +349,19 @@ TEST_P(MultiLayerTest, MultiLayerTest2TemporalDecodeBaseOnly) {
   EXPECT_EQ(num_mismatch_, 0);
 }
 
+// The pattern for 3TL is as follows, where prediction can only be within
+// the current tl layer or from lower tl layers.
+// ts is the timestamp of incoming frame. "|""  denotes a frame.
+//
+//                   |                        |
+//
+//
+//                                |                              .   .    .
+//
+//        |                                               |
+//
+//       TL0         TL2         TL1         TL2         TL0
+//      ts=0        ts=1         ts=2        ts=3        ts=4
 TEST_P(MultiLayerTest, MultiLayerTest3Temporal) {
   ::libavm_test::Y4mVideoSource video_nonsc("park_joy_90p_8_420.y4m", 0, 20);
   num_temporal_layers_ = 3;
@@ -372,10 +396,20 @@ TEST_P(MultiLayerTest, MultiLayerTest3TemporalDropTL2) {
 }
 
 // For the embedded layer tests below: the example used here is that of
-// spatial layers. Currently for spatial layers there is no prediction off
-// same m layer at previous times. Future change will add a test control to
-// allow for more flexible prediction structures, so a given m layer can also
-// predict off the same m layers at previous times (t-1, t-2,).
+// spatial layers. For this example of spatial layers there is no prediction
+// off same m layer at previous times. The test below uses a test flag to
+// control the buffer refresh and allow for more flexible prediction structures:
+// see "MultiLayerTest2Embedded2TemporalBufferControl" below.
+// Pattern for 2 ml layers is shown below.
+// ts is the timestamp of incoming frame. "|"  denotes a frame.
+//
+//
+//      | (ml=1)            | (ml=1)            | (ml=1)
+//                                                          .  .  .
+//      | (ml=0)            | (ml=0)            | (ml=0)
+//
+//      TL0                 TL0                 TL0
+//     ts=0                 ts=1                ts=2
 TEST_P(MultiLayerTest, MultiLayerTest2Embedded) {
   ::libavm_test::Y4mVideoSource video_nonsc("park_joy_90p_8_420.y4m", 0, 20);
   num_temporal_layers_ = 1;
