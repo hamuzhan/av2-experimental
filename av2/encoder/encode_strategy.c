@@ -120,7 +120,7 @@ static void set_additional_frame_flags(const AV2_COMMON *const cm,
   if (frame_is_intra_only(cm)) {
     *frame_flags |= FRAMEFLAGS_INTRAONLY;
   }
-  if (frame_is_sframe(cm)) {
+  if (frame_is_sframe(cm) && !cm->restricted_prediction_switch) {
     *frame_flags |= FRAMEFLAGS_SWITCH;
   }
   if (cm->film_grain_params.apply_grain) {
@@ -1111,12 +1111,9 @@ int av2_encode_strategy(AV2_COMP *const cpi, size_t *const size,
   if (!is_stat_generation_stage(cpi))
     set_ext_overrides(cm, &frame_params, ext_flags);
 
-  // Shown keyframes and S frames refresh all reference buffers
-  const int force_refresh_all = ((frame_params.frame_type == KEY_FRAME &&
-                                  frame_params.immediate_output_picture) ||
-                                 frame_params.frame_type == S_FRAME);
+  cm->restricted_prediction_switch =
+      cpi->oxcf.kf_cfg.sframe_dist != 0 && cpi->oxcf.kf_cfg.sframe_mode == 0;
 
-  (void)force_refresh_all;
   av2_configure_buffer_updates(cpi, frame_update_type);
 
   const int order_offset = gf_group->arf_src_offset[gf_group->index];

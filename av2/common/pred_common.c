@@ -263,20 +263,10 @@ int av2_get_ref_frames(AV2_COMMON *cm, int cur_frame_disp,
     if (!resolution_available) cm->remapped_ref_idx_res_indep[i] = INVALID_IDX;
     cm->remapped_ref_idx[i] = INVALID_IDX;
   }
+  int remap_idx_sframe[REF_FRAMES] = { 0 };
   int n_ranked = 0;
   cm->ref_frames_info.num_restricted_ref = 0;
-  if (cm->current_frame.frame_type == S_FRAME &&
-      cm->restricted_prediction_switch) {
-    // resetting when S_FRAME. these values should not change the outputs
-    for (int i = 0; i < cm->seq_params.ref_frames; i++) {
-      if (cm->ref_frame_map[i] != NULL) {
-        cm->ref_frame_map[i]->display_order_hint = REF_RESTRICTED_DOH + i;
-        cm->ref_frame_map[i]->base_qindex = 255;
-        cm->ref_frame_map[i]->absolute_poc =
-            -2;  // this change is only for the encoder output log
-      }
-    }
-  }
+
   // Give more weight to base_qindex if all references are from the past
   int max_disp = 0;
   for (int i = 0; i < cm->seq_params.ref_frames; i++) {
@@ -291,6 +281,7 @@ int av2_get_ref_frames(AV2_COMMON *cm, int cur_frame_disp,
     // Get reference frame buffer
     RefFrameMapPair cur_ref = ref_frame_map_pairs[i];
     if (cur_ref.ref_frame_restricted == 1) {
+      remap_idx_sframe[cm->ref_frames_info.num_restricted_ref] = i;
       cm->ref_frames_info.num_restricted_ref++;
       continue;
     }
@@ -377,6 +368,12 @@ int av2_get_ref_frames(AV2_COMMON *cm, int cur_frame_disp,
       bridge_frame_ref_idx_remapped_found = 1;
     }
   }
+
+  for (int i = 0; i < cm->ref_frames_info.num_restricted_ref; ++i) {
+    cm->remapped_ref_idx[i + cm->ref_frames_info.num_total_refs] =
+        remap_idx_sframe[i];
+  }
+
   if (cm->bridge_frame_info.is_bridge_frame &&
       !bridge_frame_ref_idx_remapped_found) {
     avm_internal_error(&cm->error, AVM_CODEC_ERROR,
@@ -408,9 +405,14 @@ int av2_get_ref_frames(AV2_COMMON *cm, int cur_frame_disp,
   cm->ref_frames_info.num_valid_refs_with_restricted_ref =
       cm->ref_frames_info.num_total_refs +
       cm->ref_frames_info.num_restricted_ref;
+
   if (cm->ref_frames_info.num_valid_refs_with_restricted_ref >
       max_num_ref_frames)
     cm->ref_frames_info.num_valid_refs_with_restricted_ref = max_num_ref_frames;
+
+  cm->ref_frames_info.num_total_refs =
+      cm->ref_frames_info.num_valid_refs_with_restricted_ref;
+
   return n_ranked;
 }
 

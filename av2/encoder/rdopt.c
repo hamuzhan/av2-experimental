@@ -7398,6 +7398,12 @@ static AVM_INLINE void collect_single_states(const AV2_COMMON *const cm,
   const PREDICTION_MODE this_mode = mbmi->mode;
   const MV_REFERENCE_FRAME ref_frame = COMPACT_INDEX0_NRS(mbmi->ref_frame[0]);
   const int dir = get_dir_rank(cm, mbmi->ref_frame[0], NULL);
+
+  // When dir is -1, the reference frame based ranking is not performed.
+  // Return as the later stats update assumes that the codec knows the
+  // relative position of the reference frame with respect to current frame.
+  if (dir == -1) return;
+
   const int mode_offset = INTER_OFFSET(this_mode);
   const int ref_set = get_drl_refmv_count(features->max_drl_bits, x,
                                           mbmi->ref_frame, this_mode, 0);
