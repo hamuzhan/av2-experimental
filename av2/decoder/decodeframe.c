@@ -7402,48 +7402,6 @@ void update_num_restricted_ref(AV2_COMMON *const cm) {
     cm->ref_frames_info.num_valid_refs_with_restricted_ref = max_num_ref_frames;
 }
 
-void update_ref_frames_info(AV2Decoder *pbi, OBU_TYPE obu_type) {
-  AV2_COMMON *const cm = &pbi->common;
-  if (obu_type == OBU_BRIDGE_FRAME) return;
-  // include restricted references num_total_refs and remapped_ref_idx.
-  // They are still references but not to be used except for pixel values
-  const int max_num_ref_frames =
-      AVMMIN(cm->seq_params.ref_frames, INTER_REFS_PER_FRAME);
-  int num_valid_refs_without_restricted_ref =
-      cm->ref_frames_info.num_total_refs;
-  for (int idx = 0; idx < cm->seq_params.ref_frames &&
-                    cm->ref_frames_info.num_total_refs < max_num_ref_frames;
-       idx++) {
-    if (cm->ref_frame_map[idx] != NULL &&
-        cm->ref_frame_map[idx]->is_restricted) {
-      const int cur_mlayer_id = cm->current_frame.mlayer_id;
-      const int cur_tlayer_id = cm->current_frame.tlayer_id;
-      const int ref_mlayer_id = cm->ref_frame_map[idx]->mlayer_id;
-      const int ref_tlayer_id = cm->ref_frame_map[idx]->tlayer_id;
-      if (is_tlayer_scalable_and_dependent(&cm->seq_params, cur_tlayer_id,
-                                           ref_tlayer_id, cur_mlayer_id) &&
-          is_mlayer_scalable_and_dependent(&cm->seq_params, cur_mlayer_id,
-                                           ref_mlayer_id)) {
-        int map_pos = -1;
-        for (int map_idx = 0; map_idx < num_valid_refs_without_restricted_ref;
-             map_idx++) {
-          if (cm->remapped_ref_idx[map_idx] == idx) {
-            map_pos = map_idx;
-            break;
-          }
-        }
-        // if idx is not included in ref_frames_info
-        if (map_pos == -1) {
-          cm->ref_frames_info
-              .ref_frame_distance[cm->ref_frames_info.num_total_refs] = INT_MAX;
-          cm->remapped_ref_idx[cm->ref_frames_info.num_total_refs] = idx;
-          cm->ref_frames_info.num_total_refs++;
-        }
-      }
-    }
-  }
-}
-
 static avm_codec_err_t avm_get_num_layers_from_operating_point_idc(
     int operating_point_idc, unsigned int *number_mlayers,
     unsigned int *number_tlayers) {
@@ -8201,10 +8159,6 @@ static int read_uncompressed_header(AV2Decoder *pbi, OBU_TYPE obu_type,
               }
             }
           }
-        }
-
-        if (obu_type != OBU_RAS_FRAME) {
-          update_ref_frames_info(pbi, obu_type);
         }
       }
       // Check to make sure all reference frames have valid dimensions.
