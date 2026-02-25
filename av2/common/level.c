@@ -597,21 +597,21 @@ static double get_max_frame_symbol_count(const AV2LevelSpec *const level_spec,
                             &chroma_format_idc);
   const int profile_scaling_factor =
       get_profile_scaling_factor(profile, chroma_format_idc);
-  double bitrate_profile_factor =
-      bitrate_profile_factor_table[profile_scaling_factor];
+  double picture_size_profile_factor =
+      picture_size_profile_factor_table[profile_scaling_factor];
 #else
-  const double bitrate_profile_factor =
-      profile == PROFILE_0 ? 1.0 : (profile == PROFILE_1 ? 2.0 : 3.0);
+  const double picture_size_profile_factor =
+      profile == PROFILE_0 ? 15.0 : (profile == PROFILE_1 ? 30.0 : 36.0);
 #endif  // CONFIG_AV2_PROFILES
 #if CONFIG_F428_MULTISTREAM
   double scale = multi_stream_scaling_x == 0 ? 1 : multi_stream_scaling_x;
   double max_frame_symbol_count =
       frame_parsing_time * (level_spec->max_decode_rate / scale) *
-      bitrate_profile_factor * (8 / (9 * min_comp_basis) + 1 / 48);
+      picture_size_profile_factor * (8 / (9 * min_comp_basis) + 1 / 48);
 #else
   double max_frame_symbol_count =
       frame_parsing_time * level_spec->max_decode_rate *
-      bitrate_profile_factor * (8 / (9 * min_comp_basis) + 1 / 48);
+      picture_size_profile_factor * (8 / (9 * min_comp_basis) + 1 / 48);
 #endif  //  CONFIG_F428_MULTISTREAM
   return max_frame_symbol_count;
 }
