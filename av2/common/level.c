@@ -1618,16 +1618,23 @@ double av2_get_compression_ratio(const AV2_COMMON *const cm,
   const SequenceHeader *const seq_params = &cm->seq_params;
   const BITSTREAM_PROFILE profile = seq_params->seq_profile_idc;
 #if CONFIG_AV2_PROFILES
-  const int pic_size_profile_factor =
-      profile == MAIN_420_10_IP0 ? 15 : (profile == MAIN_420_10_IP1 ? 30 : 36);
+  uint32_t chroma_format_idc = CHROMA_FORMAT_420;
+
+  av2_get_chroma_format_idc(cm->seq_params.subsampling_x,
+                            cm->seq_params.subsampling_y,
+                            cm->seq_params.monochrome, &chroma_format_idc);
+  const int profile_scaling_factor =
+      get_profile_scaling_factor(profile, chroma_format_idc);
+  const int picture_size_profile_factor =
+      (int)picture_size_profile_factor_table[profile_scaling_factor];
 #else
-  const int pic_size_profile_factor =
+  const int picture_size_profile_factor =
       profile == PROFILE_0 ? 15 : (profile == PROFILE_1 ? 30 : 36);
 #endif  // CONFIG_AV2_PROFILES
   encoded_frame_size =
       (encoded_frame_size > 129 ? encoded_frame_size - 128 : 1);
   const size_t uncompressed_frame_size =
-      (luma_pic_size * pic_size_profile_factor) >> 3;
+      (luma_pic_size * picture_size_profile_factor) >> 3;
   return uncompressed_frame_size / (double)encoded_frame_size;
 }
 
