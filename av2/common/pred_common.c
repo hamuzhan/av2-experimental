@@ -370,10 +370,11 @@ int av2_get_ref_frames(AV2_COMMON *cm, int cur_frame_disp,
   }
 
   for (int i = 0; i < cm->ref_frames_info.num_restricted_ref; ++i) {
-    if (i + cm->ref_frames_info.num_total_refs >= INTER_REFS_PER_FRAME)
-      continue;
+    if (i + cm->ref_frames_info.num_total_refs >= INTER_REFS_PER_FRAME) break;
     cm->remapped_ref_idx[i + cm->ref_frames_info.num_total_refs] =
         remap_idx_sframe[i];
+    cm->ref_frames_info
+        .ref_frame_distance[i + cm->ref_frames_info.num_total_refs] = INT_MAX;
   }
 
   if (cm->bridge_frame_info.is_bridge_frame &&
