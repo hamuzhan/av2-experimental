@@ -114,8 +114,8 @@ TEST_P(LevelTestLarge, TestLevelMonitoringLowBitrate) {
     libavm_test::I420VideoSource video("hantro_collage_w352h288.yuv", 352, 288,
                                        30, 1, 0, 40);
     target_level_ = SEQ_LEVELS;
-    cfg_.rc_target_bitrate = 1000;
-    cfg_.g_limit = 40;
+    cfg_.rc_target_bitrate = 400;
+    cfg_.g_limit = 20;
     ASSERT_NO_FATAL_FAILURE(RunLoop(&video));
     ASSERT_EQ(level_[0], 0);
   }
